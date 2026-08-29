@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090b10">
+  <meta name="description" content="按主音与和声时长计算混音价格，并管理储值余额。">
+  <title>混音价格计算器 · Music Tools</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b10;
+      --surface: #10131a;
+      --surface-soft: #151923;
+      --surface-hover: #1a2030;
+      --line: #252b38;
+      --line-light: #333b4d;
+      --text: #f4f7fb;
+      --muted: #aab3c5;
+      --quiet: #6f788a;
+      --accent: #8b5cf6;
+      --accent-light: #a78bfa;
+      --accent-soft: rgba(139, 92, 246, .14);
+      --green: #43e6a4;
+      --red: #ff8e9c;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .34), 0 1px 0 rgba(255, 255, 255, .03) inset;
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; }
+    body {
+      margin: 0; min-height: 100vh; padding: 46px 20px 70px; color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% -10%, rgba(139, 92, 246, .15), transparent 38%), var(--bg);
+    }
+    button, input { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+    .container { width: min(940px, 100%); margin: 0 auto; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(180deg, rgba(255,255,255,.018), transparent), var(--surface); box-shadow: var(--shadow); }
+    .header { position: relative; padding: 31px 34px 29px; border-bottom: 1px solid var(--line); background: radial-gradient(circle at 82% 10%, rgba(139,92,246,.12), transparent 40%); }
+    .header::before { content: "Pricing Utility"; display: block; margin-bottom: 10px; color: var(--accent-light); font-size: 11px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    .screenshot-button { position: absolute; right: 34px; top: 50%; min-height: 40px; padding: 0 14px; border: 1px solid var(--line-light); border-radius: 10px; background: var(--surface-soft); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; transform: translateY(-50%); transition: color .16s ease, border-color .16s ease, background .16s ease, transform .08s ease; }
+    .screenshot-button:hover { color: var(--text); border-color: #655487; background: var(--accent-soft); }
+    .screenshot-button:active { transform: translateY(-50%) scale(.97); }
+    .screenshot-button:disabled { cursor: default; opacity: .65; }
+    .screenshot-button.is-capturing { visibility: hidden; }
+    h2 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.15rem); font-weight: 800; letter-spacing: -.035em; }
+    .subtitle { margin: 9px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .content { padding: 26px 34px 34px; }
+    .order-name-field { margin-bottom: 16px; }
+    .calculators { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .calculator { padding: 22px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-soft); }
+    .calculator h3 { margin: 2px 0 20px; font-size: 1.08rem; letter-spacing: -.01em; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 7px; color: var(--accent-light); font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px rgba(139,92,246,.7); }
+    label { display: block; margin-bottom: 8px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    input { width: 100%; min-height: 53px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); outline: none; background: #0b0e14; color: var(--text); font-size: 16px; font-weight: 650; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+    input:hover { border-color: var(--line-light); }
+    input:focus { border-color: var(--accent); background: #0c0f16; box-shadow: 0 0 0 4px var(--accent-soft); }
+    input::placeholder { color: #596274; font-weight: 500; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin: 17px 0 -3px; padding: 11px 12px; border: 1px solid rgba(51,59,77,.65); border-radius: 10px; background: #10141c; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .switch { position: relative; width: 42px; height: 22px; flex: 0 0 auto; }
+    .switch input { width: 0; height: 0; opacity: 0; }
+    .slider { position: absolute; inset: 0; cursor: pointer; border-radius: 999px; background: #454d5e; transition: background-color .18s ease; }
+    .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; border-radius: 50%; background: #f4f4f5; transition: left .2s cubic-bezier(.2,.8,.2,1); }
+    .switch input:focus-visible + .slider { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { left: 23px; }
+    .result-box { margin-top: 20px; padding: 16px; border: 1px solid rgba(67,230,164,.13); border-radius: 11px; background: #0e1416; }
+    .result-label { margin-bottom: 7px; color: var(--quiet); font-size: 12px; font-weight: 650; }
+    .result-value { color: var(--green); font-size: 31px; font-weight: 800; line-height: 1; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+    .total { display: flex; align-items: center; justify-content: space-between; margin-top: 21px; padding: 19px 20px; border: 1px solid rgba(139,92,246,.34); border-radius: 12px; background: radial-gradient(circle at 85% 20%, rgba(139,92,246,.18), transparent 55%), var(--accent-soft); }
+    .total .result-label { margin: 0; color: #c7bdf0; font-size: 12px; }
+    .total .result-value { color: #d8d0ff; font-size: 38px; }
+    .total-price-stack { text-align: right; }
+    .original-total { display: none; margin-bottom: 6px; color: #8f89aa; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .original-total.visible { display: block; }
+    .original-total-value { text-decoration: line-through; text-decoration-color: var(--red); }
+    .balance-section { margin-top: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+    .balance-section .toggle-row { margin: 0; padding: 16px 20px; border: 0; border-radius: 0; background: #121620; font-size: 13px; }
+    .balance-panel { display: none; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 20px; border-top: 1px solid var(--line); }
+    .balance-panel.open { display: grid; }
+    .balance-result { display: flex; flex-direction: column; justify-content: center; padding: 16px 18px; border: 1px solid rgba(67,230,164,.15); border-radius: 11px; background: #0f1818; }
+    .balance-result .result-value { color: var(--green); }
+    .balance-result.negative { border-color: rgba(255,142,156,.2); background: #211318; }
+    .balance-result.negative .result-label { color: #d9a3aa; }
+    .balance-result.negative .result-value { color: var(--red); }
+    .topup-action { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+    .topup-button { min-height: 40px; padding: 0 14px; border: 1px solid rgba(139,92,246,.48); border-radius: 10px; background: var(--accent-soft); color: #e8e3ff; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .16s ease, border-color .16s ease, transform .08s ease; }
+    .topup-button:hover { border-color: var(--accent-light); background: rgba(139,92,246,.23); }
+    .topup-button:active { transform: scale(.97); }
+    .topup-button:disabled { cursor: default; opacity: .65; }
+    .error { color: var(--red) !important; font-size: 16px !important; line-height: 1.35 !important; }
+    .receipt-capture { position: fixed; top: 0; left: -10000px; width: 400px; padding: 28px 26px; background: #fff; color: #252525; font-family: "Courier New", "Microsoft YaHei", monospace; font-size: 14px; line-height: 1.5; }
+    .receipt-brand { text-align: center; font-family: "Microsoft YaHei", sans-serif; font-size: 23px; font-weight: 800; letter-spacing: .08em; }
+    .receipt-type { margin-top: 3px; text-align: center; color: #666; font-size: 12px; letter-spacing: .18em; }
+    .receipt-rule { margin: 19px 0; border-top: 1px dashed #777; }
+    .receipt-row { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; }
+    .receipt-row span:last-child { text-align: right; font-weight: 700; }
+    .receipt-original { color: #777; text-decoration: line-through; text-decoration-thickness: 1px; }
+    .receipt-total { padding: 14px 0 3px; font-family: "Microsoft YaHei", sans-serif; font-size: 18px; font-weight: 800; }
+    .receipt-total span:last-child { font-size: 26px; }
+    .receipt-balance { margin-top: 8px; padding: 12px; border: 1px dashed #777; }
+    .receipt-balance .receipt-row:last-child { margin-bottom: 0; font-size: 16px; }
+    .receipt-footer { margin-top: 18px; color: #777; text-align: center; font-size: 11px; }
+    .receipt-promo { margin-top: 18px; padding: 10px 12px; border: 1px dashed #333; color: #222; text-align: center; font-family: "Microsoft YaHei", sans-serif; }
+    .receipt-promo-title { margin-bottom: 7px; font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+    .receipt-promo-list { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .receipt-payment-title { margin-bottom: 13px; text-align: center; font-family: "Microsoft YaHei", sans-serif; font-size: 14px; font-weight: 700; }
+    .receipt-payments { display: flex; justify-content: center; gap: 28px; }
+    .receipt-payment { text-align: center; font-family: "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 700; }
+    .receipt-payment img { display: block; width: 128px; height: 128px; margin-bottom: 7px; image-rendering: pixelated; }
+    .receipt-payment-pair { display: block; width: 348px; height: 167px; margin: 0 auto 7px; object-fit: fill; image-rendering: pixelated; }
+    .receipt-payment-labels { display: flex; justify-content: space-around; padding: 0 34px; font-family: "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 700; }
+    @media (max-width: 620px) { body { padding: 20px 12px 45px; } .header, .content { padding-left: 20px; padding-right: 20px; } .header { padding-top: 24px; padding-bottom: 77px; } .screenshot-button { left: 20px; right: auto; top: auto; bottom: 20px; transform: none; } .screenshot-button:active { transform: scale(.97); } .calculators, .balance-panel { grid-template-columns: 1fr; } .total { align-items: flex-start; flex-direction: column; gap: 9px; } .total-price-stack { text-align: left; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="header"><h2>混音价格计算器</h2><p class="subtitle">计算公式: 总价 = 主音时间 × 30 + 和声时间 × 20</p><button id="screenshotButton" class="screenshot-button" type="button" onclick="copyCardScreenshot()">截图到剪贴板</button></header>
+    <div class="content">
+      <div class="order-name-field"><label for="orderNameInput">订单名称</label><input type="text" id="orderNameInput" placeholder="例如：歌曲混音 / 项目名称" maxlength="60"></div>
+      <div class="calculators">
+      <section class="calculator">
+        <span class="eyebrow">主音计算</span><h3>30 倍计算</h3>
+        <label for="leftInput">输入时间（分.秒 或 分:秒）</label>
+        <input type="text" id="leftInput" placeholder="例如 1.30 或 1:30" value="" inputmode="decimal" oninput="calculate()">
+        <div class="toggle-row"><span>全曲</span><label class="switch" aria-label="全曲"><input type="checkbox" id="leftFixedPrice" onchange="calculate()"><span class="slider"></span></label></div>
+        <div class="result-box"><div class="result-label">主音价格</div><div id="leftResult" class="result-value">0</div></div>
+      </section>
+      <section class="calculator">
+        <span class="eyebrow">和声计算</span><h3>20 倍计算</h3>
+        <label for="rightInput">输入时间（分.秒 或 分:秒）</label>
+        <input type="text" id="rightInput" placeholder="例如 1.30 或 1:30" value="" inputmode="decimal" oninput="calculate()">
+        <div class="result-box"><div class="result-label">和声价格</div><div id="rightResult" class="result-value">0</div></div>
+        <div class="total"><div class="result-label">惊爆价</div><div class="total-price-stack"><div id="originalTotal" class="original-total">原价：<span id="originalTotalValue" class="original-total-value">0</span></div><div id="totalResult" class="result-value">0</div></div></div>
+        <div class="toggle-row"><span>抹零</span><label class="switch" aria-label="抹零"><input type="checkbox" id="roundTotalToggle" checked onchange="calculate()"><span class="slider"></span></label></div>
+      </section>
+    </div>
+      <section class="balance-section">
+        <div class="toggle-row"><span>储值余额计算</span><label class="switch" aria-label="储值余额计算"><input type="checkbox" id="balanceToggle" onchange="toggleBalance()"><span class="slider"></span></label></div>
+        <div class="balance-panel" id="balancePanel">
+          <div><label for="balanceInput">客户储值余额</label><input type="number" id="balanceInput" placeholder="请输入储值余额" min="0" step="any" inputmode="decimal" oninput="calculate()"></div>
+          <div><label for="topUpInput">本次充值金额</label><input type="number" id="topUpInput" placeholder="请输入本次充值金额" min="0" step="any" inputmode="decimal"></div>
+          <div class="balance-result"><div class="result-label">扣除当前总价后余额</div><div id="balanceResult" class="result-value">0</div></div>
+          <div class="topup-action"><button id="topUpReceiptButton" class="topup-button" type="button" onclick="copyTopUpReceipt()">生成储值小票</button></div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <section id="receiptCapture" class="receipt-capture" aria-hidden="true"></section>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    const paymentQrCodes = {
+      alipay: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADAUlEQVR4nO1cS46jQAy1A1IvgzQHyFHgZq050twAjpIbNMtIQR75UxVo9aKZoKFJvbfoLj6WCmPZzx/CQqsxnNbLEEEoAEUEoIgAFBGAIgJQRACKOJIiOFATdzQxd2NNRCMzDc3EtnJ0u2xvJSC0gSJaUXzocqxJel0MF8m0s7Lr6RAqf2FFkL/pVo2h/bAXf3eLcAPRc/5HzcItp//hz3SC0BOKqD8dc/vnl3Ark1+Q4XJjoXF5E1RekCLk9+Wu/yvhjpJn+Dnb+xYgtIWPOOt7n7mCqaahqYjaa20WQnO7gMpfXxGDZRINEb9fLc14c25hyYXnH4q9trcOEHreR8jszFmJA9008SSlEJMeLiMHVF5GriH9p8Oz5hXnu2Ydla+QaxSUa1R38gxjbDTDMKcw1cojbKXeoj7IM50g9LyPoPOiKKHuIVZ6j10g+IjSLEKsOPWAmUWUK7VqBYsokEdUWpVUumDeQldmEW4b5jdQsyzDIsSCg8eFVLGO0OHXc2UbFlGMUCUi1zc1homDOOhK+aS1QrnzILLT9tYAQpv4iGrGIFKnKwcMcxn5FnS6CrE9tvkItoEI72touTI1x2M0Yr/tfR8Q2sBHSC5JKWd4ZJqPjBTMskSLoGpZhUh2YLB0BFGjmKm6i3mGG0tvfNL64ho/rGYZtnFPoeMQz7QSEPqCWfaLc1aPcOcR2SeYZWkVKkXkoV62joARxmDzdXoPco0SeIT4XEwgt0KTo8jFTFhESTXLNvmIhR0EUusDPqIMZvlu3DEP5ls9QisT0mu5Msan9EOOXba3EhDaJGoE0rlEKmfOw2ZnFOARJX3TRRowfAx7aChqVTYsE72OPba3EhDaItcQhbc903zdwz3MCQZ8RGnfdPV5FsKvZs+AmmWZQtzp979eqdR0c2hS6qEzVGCWh365/+QjyCenjD0svQVqlmXyCMlR4zF+6zdmRoFco4jJW0c0O2efagTHTE1RZJ8vL8T4ZbJDvKcThBxQRACKCEARASgiAEUE/p8i/gJCZsbcpgBGHQAAAABJRU5ErkJggg==',
+      wechat: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADOklEQVR4nO1bXYrjMAyW4kAfXegBehT3BnOkZY80N0iOMgcYiB8LDloky066sLCZlgkZ63twSW1RVzH6+SQjwWaM3XYZABNSmCIUpgiFKUJgilCYIhSmiCMpAhU94C0iwog9wHiuq2JZcNtlexthQs8oos8fYeAxXoAgAmAgAAToE4xvE8+4JMvwiV/qTOhQiohqALIVUPMw42qCLchu29sEE3qBjaig8ar5KEG8JAzTJQHbjTVM5Q2dCIDYs4eYexrf7kjjGZAO9p86E3pCEUAMCPIxOYIwAdDgU55QTI5W6wZTueIHK2KUTCJHD47w18eJ8BYl9eAB5pxq7LW9bTCh570G1WdxEwD+zgO7D39nr/HoOEzlP14RyKZA8go9B+CIBpiRhniiknWItdhjexthQi+IIxiruEHYiUCpDBxHcGxhcUQ7keUkD/LiJYBMGl7mIZsMjjstsmzjRNBQDwPkodiDnGbIean5h+UaLQj5lEsaEj2ItShhBceYoMfC4ohDvtxtKDxDKkZhxUIIM6Emg6guMRvRitegQk7lA6Kz1VfkAMNORBN8BObBEw+OUL0GlzSYsOJZEjLzu7fXmdBeNsIXo8CJZ/EQS/b5wGyb12gi+3Sac9IycIaxTkstjmiprnG9I/1G5ieFpGR+Eq+L3RDOUtjLXba3DSb0imp4PJF0TiljzQiDxA3ypUsI/tMqXc3FEW7NXubieGU0l9zU4ohGTgTpIF/8dUDEdRiL3VT2eSIIH/I0a4V8vLH/8IkfXSo+5Xu315nQTjaCSqaZaaraOZXLnotjMYaqGRvhJ0KI0i1TOvHDeyl41LXGULUiRKsaBuca43muRa4ZNbwkIqt0HfDlfp3Fhmwe/GePYZq5v+6TjQKz2Mxnj3iU/9SZ0At7sUmGSmUrcSltVjkJseyzoR6qkJvnSpPdYxV0cR3GRzQmFKVtxuXufOGzC39VyMzj/af/gAn9404Xgp8Aw3Tmnny+2HVNPYLnqVjvipv2moojaN1nuWrDtjiizTtdqFfAuWNG3ERuwOxBGE3LPo/4cp+80wWrQY7FMpuMoTrWy+1MKMMUoTBFKEwRClOEwhSh+JIi/gD+uob5k4w3IwAAAABJRU5ErkJggg=='
+    };
+    const paymentQrPair = 'data:image/png;base64,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';
+    const paymentQrCodesV6 = {
+      alipay: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASYAAAEmAQAAAADnvwB3AAACq0lEQVR4nO1aQW4iMRAs45FyND/IUzw/42vmKfmB5xjJqFdVbWbJKWQVKaSXPqABRmjK1V1dbpMMn8flcMdNwPOuazxX4hrPlfj6SiTGmo5YcE7H8+LfbAkbv1hCrGo2sw7rGNtpAAOEuaAuqGb26E9/R5hZ7si9jtJ4YTaKoTRi7xWo/ORRn/7wxbuWbX1/be9pxbba2zoE8wGe6zvvyr2+vJ2Ac+5YgJdexz//1gPmqpn1mq3BC7AYL1ihfBsjVy8ppSOwncjgtua3VVRWymxKP/dcn8f9PHqgWLbG/CyU2SFOPUaIXM2d0PSBa2kbZeL9/bkKZyqbkThWpRFdaSxSIY3BI0ADYNZMbBKaGJQ9INgAGLP6fu5g9yde5ap7gCi5CpZeFSJSaXQ7zSUojOaABTgRYVaipJXk1hgYh+pRWkpQAB3OrqsxMGaSRZMzEe2enKUaRFet47YzOqEycs0C6SpUhnLmdDjidO47wmDM6o9ub5y73Ku6SRAeIVyUGukM8UpOZQyCaM5gWmq36GWonSNRB+odphEH38jIsRI593CkUXwOQ/McIzT1C/kB2bkYGPMcAkhUC1PXE9WCzKwwN8iYuypw9qh+oV4ZqneYt485DZiDx0CagymqnK8qP+ld5ywrSu/IEhYXVdfVXV3DzAGGapAWTq5m+vCi6Uccv9oclA4F/vpVtRItQgRdbbxSs7j1q9KcILo6Yxecq1/1YoyBERzm+Khq+lWX1nlsFwKjh+wcudvnOa4/UXjEvim+mefMLWQMjFkp6uPHD2esu8eL4AFwo6JzniNCya8FwmgSUvVHhZqInHkcjEPmzc9x8vXsI8Q858CXQjvnZ6wprQswtvXy2vzc/Aef69t1NVNF/az8g7X7/fWYnv8JfHCGDs+7ZvwPK/EHPWwjlVmjQ5QAAAAASUVORK5CYII=',
+      wechat: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASYAAAEmAQAAAADnvwB3AAAC1UlEQVR4nO1aQY7bMAwcWQJylIF9QJ/i/GCf1DftD+Sn7AMCyMcCMlgMyWTbUxKgQF02wh6MWAeNyRkOqU2C+2ufHtgEvHZd1+tLXNfrSzz/JRLXOc0rsO7zWuzNlrDxRQnxVbOIdEgHtu8ABgizYClYROTop7+/NGjbnC/Y3z6It2N/6/v8sc/IQMJy5NNPD+2CiOSO3IllVAGWgUU6Rm3CH5csMo56+unJXbkv2M4DKwvijFM/yLn+UBxFpDNeqCQmH7BkMpR8jBHHPaU0A9s5f54LGM3MIC4Fa0rp753r/no8jrYM16DIqJzWxvjqGiFyNavsiLRBmMrNKgNADZCrECdjMzIqB5vBVIwtRhzhUkOYLB+1MW+1jogwYwNgzNKG49JcrSLSzA+EyVVY3Tew9HIkI0kaSHNQG2PX/dnKJVlJpEFyFUY9FRw1dVSbwbwFxScOH+WWnCY71o+QpyEwDiYqI2hqY5AtXfUvAsbs8WpWNczqeCjVx0bA2ElGy1Ut+sxPRefPATCCNbFZ7NTheMcRKVdFril6JaYKDm1PmNqRtTI69eqtDSHSEP0jmIrQpkMx+tBDOw77PQZGYdXwzKQf0FAqUu8lA2DM5KOrqIqPjjusmkSYWRWddQDfegGnjuXyLts8sOpYAPnyPg58+unxXbWN7Qzg9Jn2mT8U4Acf3Akc+/QPz1eFldF8nfpwhabGNQYfh8qL+RzjoLeNfNti8PEkgCDNvAKgnBZeAayM5pr45rinn56oHfBplRaRm19VMgbQVZiXg0Kzsnjzq1o0g/ARNlNVwTHD43410OzRlmXm13jcuq0oXg5c1lhZEG2e4wBjYMxmWW1s9fs8x7zrCHPHWt0M+NTRWGniEwXj4EUA7441pqY2OhYIhFFUYK/iw/mqXn+0SHwU1VLvrSyUQbwcftFVsSty8663C6x/n4/p9T+BB4/Q9Nrl63/4Ej8Ba8UOYFrCqgYAAAAASUVORK5CYII='
+    };
+    function parseTime(value) {
+      const input = value.trim();
+      if (input === '') return { value: 0 };
+      const match = input.match(/^(\d+)(?:[.:](\d{0,2}))?$/);
+      if (!match) return { error: '时间格式错误' };
+      const minutes = Number(match[1]);
+      const secondsText = match[2] && match[2].length === 1 ? `${match[2]}0` : (match[2] || '0');
+      const seconds = Number(secondsText);
+      if (seconds >= 60) return { error: '秒数需在 0-59 之间' };
+      return { value: minutes + seconds / 60 };
+    }
+    function setResult(id, value, error) {
+      const element = document.getElementById(id);
+      element.textContent = error || value;
+      element.classList.toggle('error', Boolean(error));
+    }
+    function calculate() {
+      const left = parseTime(document.getElementById('leftInput').value);
+      const right = parseTime(document.getElementById('rightInput').value);
+      const leftIsFixed = document.getElementById('leftFixedPrice').checked;
+      const leftValue = leftIsFixed ? 70 : left.value * 30;
+      const rightValue = right.value * 20;
+      setResult('leftResult', Number.isFinite(leftValue) ? Number(leftValue.toFixed(2)) : '', leftIsFixed ? '' : left.error);
+      setResult('rightResult', Number.isFinite(rightValue) ? Number(rightValue.toFixed(2)) : '', right.error);
+      const totalError = (leftIsFixed ? '' : left.error) || right.error;
+      const rawTotal = leftValue + rightValue;
+      const isTotalRounded = document.getElementById('roundTotalToggle').checked;
+      const finalTotal = rawTotal <= 20 ? 20 : (isTotalRounded ? Math.floor(rawTotal / 10) * 10 + (Math.floor(rawTotal) % 10 >= 5 ? 5 : 0) : Number(rawTotal.toFixed(2)));
+      setResult('totalResult', !totalError ? finalTotal : '', totalError ? '请先修正输入' : '');
+      const originalTotal = document.getElementById('originalTotal');
+      const originalTotalValue = document.getElementById('originalTotalValue');
+      originalTotalValue.textContent = !totalError ? Number(rawTotal.toFixed(2)) : '';
+      originalTotal.classList.toggle('visible', isTotalRounded && !totalError);
+      const balanceInput = document.getElementById('balanceInput').value.trim();
+      const balance = balanceInput === '' ? 0 : Number(balanceInput);
+      const balanceError = Number.isFinite(balance) ? '' : '请输入有效余额';
+      setResult('balanceResult', !totalError && !balanceError ? Number((balance - finalTotal).toFixed(2)) : '', totalError ? '请先修正输入' : balanceError);
+      document.getElementById('balanceResult').closest('.balance-result').classList.toggle('negative', !totalError && !balanceError && balance - finalTotal < 0);
+    }
+    function toggleBalance() {
+      const isOpen = document.getElementById('balanceToggle').checked;
+      document.getElementById('balancePanel').classList.toggle('open', isOpen);
+      calculate();
+    }
+    function getTopUpGift(amount) {
+      if (amount >= 1000) return 200;
+      if (amount >= 600) return 100;
+      if (amount >= 300) return 30;
+      return 0;
+    }
+    function getReceiptNumber() {
+      const now = new Date();
+      return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
+    }
+    async function copyTopUpReceipt() {
+      const button = document.getElementById('topUpReceiptButton');
+      const amount = Number(document.getElementById('topUpInput').value);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        button.textContent = '请输入充值金额';
+        return;
+      }
+      button.disabled = true;
+      button.textContent = '正在生成小票…';
+      try {
+        if (typeof html2canvas === 'undefined') throw new Error('截图组件未加载');
+        const currentBalance = Number(document.getElementById('balanceInput').value) || 0;
+        const gift = getTopUpGift(amount);
+        const receipt = document.getElementById('receiptCapture');
+        receipt.innerHTML = `
+          <div class="receipt-brand">阿触的音频小铺</div>
+          <div class="receipt-type">储值凭证</div>
+          <div class="receipt-rule"></div>
+          <div class="receipt-row"><span>客户当前余额</span><span>${currentBalance}</span></div>
+          <div class="receipt-row"><span>本次充值金额</span><span>${amount}</span></div>
+          <div class="receipt-row"><span>充值赠送金额</span><span>${gift}</span></div>
+          <div class="receipt-rule"></div>
+          <div class="receipt-row receipt-total"><span>充值后余额</span><span>${Number((currentBalance + amount + gift).toFixed(2))}</span></div>
+          <div class="receipt-footer">储值金额以当前记录为准<br>流水号：${getReceiptNumber()}</div>
+          <div class="receipt-promo"><div class="receipt-promo-title">— 储值优惠券 —</div><div class="receipt-promo-list"><span>充值 300 送 30</span><span>充值 600 送 100</span><span>充值 1000 送 200</span></div></div>`;
+        const canvas = await html2canvas(receipt, { backgroundColor: '#ffffff', scale: 1.5 });
+        const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (!image || !navigator.clipboard || !window.ClipboardItem) throw new Error('当前浏览器不支持图片复制');
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
+        button.textContent = '储值小票已复制';
+      } catch (error) {
+        console.error(error);
+        button.textContent = '生成失败，请用 Chrome 打开';
+      } finally {
+        button.disabled = false;
+      }
+    }
+    async function copyCardScreenshot() {
+      const button = document.getElementById('screenshotButton');
+      button.disabled = true;
+      button.textContent = '正在生成截图…';
+      try {
+        if (typeof html2canvas === 'undefined') throw new Error('截图组件未加载');
+        const receipt = document.getElementById('receiptCapture');
+        const isRounded = document.getElementById('originalTotal').classList.contains('visible');
+        const hasBalance = document.getElementById('balancePanel').classList.contains('open');
+        const originalPrice = document.getElementById('originalTotalValue').textContent;
+        const balance = document.getElementById('balanceInput').value.trim() || '0';
+        const orderName = document.getElementById('orderNameInput').value.trim();
+        receipt.innerHTML = `
+          <div class="receipt-brand">阿触的音频小铺</div>
+          <div class="receipt-type">PRICE RECEIPT</div>
+          <div class="receipt-rule"></div>
+          <div class="receipt-row"><span>订单名称</span><span>${escapeHtml(orderName || '未填写')}</span></div>
+          <div class="receipt-rule"></div>
+          <div class="receipt-row"><span>主音价格</span><span>${document.getElementById('leftResult').textContent}</span></div>
+          <div class="receipt-row"><span>和声价格</span><span>${document.getElementById('rightResult').textContent}</span></div>
+          ${isRounded ? `<div class="receipt-row receipt-original"><span>原价</span><span>${originalPrice}</span></div>` : ''}
+          <div class="receipt-rule"></div>
+          <div class="receipt-row receipt-total"><span>惊爆价</span><span>${document.getElementById('totalResult').textContent}</span></div>
+          ${hasBalance ? `<div class="receipt-balance"><div class="receipt-row"><span>客户储值余额</span><span>${balance}</span></div><div class="receipt-row"><span>扣除后余额</span><span>${document.getElementById('balanceResult').textContent}</span></div></div>` : ''}
+          <div class="receipt-footer">报价以当前计算结果为准</div>
+          <div class="receipt-promo"><div class="receipt-promo-title">— 储值优惠券 —</div><div class="receipt-promo-list"><span>充值 300 送 30</span><span>充值 600 送 100</span><span>充值 1000 送 200</span></div></div>`;
+        const paymentSection = !hasBalance ? `<div class="receipt-rule"></div><div class="receipt-payment-title">扫码支付</div><div class="receipt-payments"><div class="receipt-payment"><img src="${paymentQrCodesV6.alipay}" alt="支付宝二维码"><span>支付宝</span></div><div class="receipt-payment"><img src="${paymentQrCodesV6.wechat}" alt="微信二维码"><span>微信</span></div></div>` : '';
+        receipt.innerHTML = receipt.innerHTML.replace('<div class="receipt-footer">', `${paymentSection}<div class="receipt-footer">`);
+        await Promise.all(Array.from(receipt.querySelectorAll('img')).map(image => image.complete ? Promise.resolve() : new Promise(resolve => { image.onload = image.onerror = resolve; })));
+        const canvas = await html2canvas(receipt, { backgroundColor: '#ffffff', scale: 1.5, useCORS: true });
+        const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (!image || !navigator.clipboard || !window.ClipboardItem) throw new Error('当前浏览器不支持图片复制');
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
+        button.textContent = '已复制到剪贴板';
+      } catch (error) {
+        console.error(error);
+        button.textContent = '复制失败，请用 Chrome 打开';
+      } finally {
+        button.disabled = false;
+      }
+    }
+    calculate();
+  </script>
+</body>
+</html>
