@@ -99,6 +99,7 @@
     .threshold-control { margin: 14px 0 8px; }
     .threshold-control input { width: 100%; accent-color: var(--accent); }
     .upload-box { margin-bottom: 20px; padding: 13px; border: 1px dashed var(--line-light); border-radius: var(--radius-sm); background: #10141c; }
+    .upload-box.drag-over { border-color: var(--accent-light); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); }
     .upload-box > label { color: var(--text); }
     input[type="file"] { display: block; width: 100%; color: var(--muted); font-size: 12px; }
     input[type="file"]::file-selector-button, .small-button { padding: 7px 10px; border: 1px solid var(--line-light); border-radius: 7px; color: var(--text); background: #222039; cursor: pointer; }
@@ -167,14 +168,14 @@
 
     <div class="content">
       <div class="audio-help">
-        <p>上传纯人声干音，自动扣除静音并填入计费时长。主人声、和声分别上传，可多选或分批追加；同一类别内各文件的有效时长相加，重叠演唱的不同轨道也分别计时。文件仅在本机处理。追加、移除文件或调整阈值会覆盖手动填写的时长。</p>
+        <p>上传纯人声干音，先将每个文件的峰值标准化至 −6 dBFS，再扣除静音并填入计费时长。主人声、和声分别上传，可多选或分批追加；同一类别内各文件的有效时长相加，重叠演唱的不同轨道也分别计时。文件仅在本机处理，不修改原文件。追加、移除文件或调整阈值会覆盖手动填写的时长。</p>
         <details>
-          <summary>调整静音检测 · 默认 −45 dB</summary>
+          <summary>调整静音检测 · 默认 −60 dB</summary>
           <div class="threshold-control">
-            <label for="silenceThreshold">静音阈值：<output id="thresholdValue" for="silenceThreshold">−45 dB</output></label>
-            <input type="range" id="silenceThreshold" min="-70" max="-20" step="1" value="-45" aria-describedby="thresholdHint">
+            <label for="silenceThreshold">静音阈值：<output id="thresholdValue" for="silenceThreshold">−60 dB</output></label>
+            <input type="range" id="silenceThreshold" min="-70" max="-20" step="1" value="-60" aria-describedby="thresholdHint">
           </div>
-          <p id="thresholdHint">通过每 20 毫秒的音量估算人声段，忽略不足 60 毫秒的孤立声音，不计静音间隔。漏掉轻声时调低阈值；底噪被计入时调高阈值。无法区分人声、伴奏或呼吸声，请核对结果，必要时手动修正。调整阈值会重新填入两侧时长。</p>
+          <p id="thresholdHint">每个文件整体标准化至峰值 −6 dBFS 后，通过每 20 毫秒的音量估算人声段，忽略不足 60 毫秒的孤立声音，不计静音间隔。纯静音文件跳过标准化。漏掉轻声时调低阈值；底噪被计入时调高阈值。无法区分人声、伴奏或呼吸声，请核对结果，必要时手动修正。调整阈值会重新填入两侧时长。</p>
         </details>
       </div>
       <div class="calculators">
@@ -184,7 +185,7 @@
           <div class="upload-box" id="leftUploadBox">
             <label for="leftFiles">上传主人声干音</label>
             <input type="file" id="leftFiles" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.aif,.aiff" multiple>
-            <p class="upload-hint">支持多文件。优先使用 WAV；其他格式取决于浏览器支持。</p>
+            <p class="upload-hint">可将多个音频直接拖入此框，或点击选择文件，支持分批追加。优先使用 WAV；其他格式取决于浏览器支持。</p>
             <p class="upload-status" id="leftUploadStatus" role="status">尚未添加文件</p>
             <ul class="file-list" id="leftFileList" aria-label="主人声文件"></ul>
             <div class="upload-actions" id="leftUploadActions" hidden><button type="button" class="small-button" id="leftRefill">重新填入时长</button><button type="button" class="small-button" id="leftClear">清空文件</button></div>
@@ -202,7 +203,7 @@
           <div class="upload-box" id="rightUploadBox">
             <label for="rightFiles">上传和声干音</label>
             <input type="file" id="rightFiles" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.aif,.aiff" multiple>
-            <p class="upload-hint">支持多文件。优先使用 WAV；其他格式取决于浏览器支持。</p>
+            <p class="upload-hint">可将多个音频直接拖入此框，或点击选择文件，支持分批追加。优先使用 WAV；其他格式取决于浏览器支持。</p>
             <p class="upload-status" id="rightUploadStatus" role="status">尚未添加文件</p>
             <ul class="file-list" id="rightFileList" aria-label="和声文件"></ul>
             <div class="upload-actions" id="rightUploadActions" hidden><button type="button" class="small-button" id="rightRefill">重新填入时长</button><button type="button" class="small-button" id="rightClear">清空文件</button></div>
@@ -293,10 +294,10 @@
       const analysisAPI = window.DryVocalAnalysis;
       const threshold = $("silenceThreshold");
       const groups = ["left", "right"].map((prefix) => ({
-        prefix, input: $(`${prefix}Input`), picker: $(`${prefix}Files`),
+        prefix, input: $(`${prefix}Input`), picker: $(`${prefix}Files`), box: $(`${prefix}UploadBox`),
         list: $(`${prefix}FileList`), status: $(`${prefix}UploadStatus`),
         actions: $(`${prefix}UploadActions`), refill: $(`${prefix}Refill`), clear: $(`${prefix}Clear`),
-        entries: [], busy: false, manual: false, autoFilled: false
+        entries: [], pending: [], dragDepth: 0, busy: false, manual: false, autoFilled: false
       }));
       const yieldToUI = () => new Promise((resolve) => setTimeout(resolve, 0));
       const secondsLabel = (seconds) => `${seconds.toFixed(2)} 秒`;
@@ -358,24 +359,33 @@
       }
 
       async function addFiles(group, files) {
-        if (!files.length || group.busy) return;
+        if (!files.length) return;
         const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
         if (!OfflineContext || !analysisAPI) {
           group.status.textContent = "当前浏览器无法分析音频，请使用新版 Chrome、Edge 或手动输入时长。";
           group.picker.value = "";
           return;
         }
-        group.busy = true;
         const entries = files.map((file) => ({ name: file.name, file }));
         group.entries.push(...entries);
+        group.pending.push(...entries);
+        // Drops during analysis join the same queue instead of being discarded.
+        if (group.busy) {
+          renderGroup(group);
+          return;
+        }
+        group.busy = true;
+        let hasNewAnalysis = false;
         renderGroup(group);
-        for (const entry of entries) {
+        while (group.pending.length) {
+          const entry = group.pending.shift();
           try {
             if (entry.file.size === 0) throw new Error("empty");
             // Decode one file at a time; keep only compact frame levels afterwards.
             const context = new OfflineContext(1, 1, 16000);
             const buffer = await context.decodeAudioData(await entry.file.arrayBuffer());
             entry.analysis = await analysisAPI.analyzeBuffer(buffer, yieldToUI);
+            hasNewAnalysis = true;
           } catch (error) {
             entry.error = entry.file.size === 0 ? "文件为空，未计费" : "无法读取音频，未计费；请转换为 WAV 后重试";
           }
@@ -386,10 +396,48 @@
         group.busy = false;
         group.picker.value = "";
         // A failed batch must not erase an existing manual quote.
-        renderGroup(group, entries.some((entry) => entry.analysis));
+        renderGroup(group, hasNewAnalysis);
       }
 
+      const isFileDrag = (event) => Array.from(event.dataTransfer?.types || []).includes("Files");
+      function resetDrag(group) {
+        group.dragDepth = 0;
+        group.box.classList.remove("drag-over");
+      }
+      // Dropping a file outside an upload box must not navigate away from the quote.
+      document.addEventListener("dragover", (event) => {
+        if (!isFileDrag(event)) return;
+        event.preventDefault();
+        if (!groups.some((group) => group.box.contains(event.target))) event.dataTransfer.dropEffect = "none";
+      });
+      document.addEventListener("drop", (event) => {
+        if (!isFileDrag(event)) return;
+        event.preventDefault();
+        groups.forEach(resetDrag);
+      });
+
       groups.forEach((group) => {
+        group.box.addEventListener("dragenter", (event) => {
+          if (!isFileDrag(event)) return;
+          event.preventDefault();
+          group.dragDepth++;
+          group.box.classList.add("drag-over");
+        });
+        group.box.addEventListener("dragover", (event) => {
+          if (!isFileDrag(event)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        });
+        group.box.addEventListener("dragleave", () => {
+          group.dragDepth = Math.max(0, group.dragDepth - 1);
+          if (group.dragDepth === 0) resetDrag(group);
+        });
+        group.box.addEventListener("drop", (event) => {
+          if (!isFileDrag(event)) return;
+          event.preventDefault();
+          resetDrag(group);
+          addFiles(group, Array.from(event.dataTransfer.files));
+        });
         group.picker.addEventListener("change", () => addFiles(group, Array.from(group.picker.files)));
         group.clear.addEventListener("click", () => {
           group.entries = [];
