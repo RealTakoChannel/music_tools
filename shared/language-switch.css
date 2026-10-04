@@ -1,0 +1,8 @@
+.language-switch{display:inline-flex;flex:none;gap:3px;padding:3px;border:1px solid #333b4d;border-radius:10px;background:#0b0e14}
+.language-switch button{min-height:32px;padding:0 10px;border:0;border-radius:7px;color:#aab3c5;background:transparent;font:inherit;font-size:12px;cursor:pointer;transition:background .18s ease,color .18s ease}
+.language-switch button[aria-pressed=true]{color:#f4f7fb;background:rgba(139,92,246,.14);box-shadow:inset 0 0 0 1px rgba(139,92,246,.3)}
+.language-switch button:hover{color:#f4f7fb}
+.language-switch button:focus-visible{outline:2px solid #a78bfa;outline-offset:3px}
+.nav-actions{display:flex;align-items:center;justify-content:flex-end;gap:16px;flex-wrap:wrap}
+@media(max-width:600px){.topbar,.tool-nav{flex-wrap:wrap}.nav-actions{gap:10px}.language-switch button{padding:0 8px}}
+@media(prefers-reduced-motion:reduce){.language-switch button{transition:none}}

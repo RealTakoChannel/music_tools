@@ -45,7 +45,14 @@
     .language-switch button[aria-pressed="true"] { color: var(--text); background: var(--accent-soft); box-shadow: inset 0 0 0 1px rgba(139,92,246,.3); }
     .language-switch button:hover { color: var(--text); }
     input[type="file"][hidden] { display: none; }
-    input:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+    input:focus-visible, button:focus-visible, summary:focus-visible, .home-link:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+
+    .tool-nav { width: min(940px, 100%); margin: 0 auto 24px; }
+    .home-link { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-size: 13px; font-weight: 650; text-decoration: none; }
+    .home-mark { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #9b7cff44; border-radius: 10px; background: #9b7cff20; color: var(--accent-light); font-size: 22px; }
+    .home-divider { margin: 0 3px; color: var(--line-light); }
+    .home-label { color: var(--muted); }
+    .home-link:hover .home-label { color: var(--accent-light); }
 
     .container {
       width: min(940px, 100%);
@@ -211,6 +218,14 @@
   </style>
 </head>
 <body>
+  <nav class="tool-nav" aria-label="工具导航" data-i18n-aria="toolNavigation">
+    <a class="home-link" href="../index.html" aria-label="返回主界面" data-i18n-aria="backHome">
+      <span class="home-mark" aria-hidden="true">♫</span>
+      <span>Music Tools</span>
+      <span class="home-divider" aria-hidden="true">/</span>
+      <span class="home-label" data-i18n="backHome">返回主界面</span>
+    </a>
+  </nav>
   <main class="container">
     <header class="header" id="pageHeader" data-kicker="Pricing Utility">
       <div class="heading-row">
@@ -295,7 +310,7 @@
       const i18n = window.CashierI18n;
       let language = "zh";
       try {
-        const savedLanguage = window.localStorage.getItem("cashier-language");
+        const savedLanguage = window.localStorage.getItem("music-tools-language") || window.localStorage.getItem("cashier-language");
         if (Object.hasOwn(i18n.messages, savedLanguage)) language = savedLanguage;
       } catch (_) { /* Storage can be unavailable for local files or private browsing. */ }
       const t = (key, values) => i18n.translate(language, key, values);
@@ -582,7 +597,10 @@
       document.querySelectorAll("[data-language]").forEach((button) => {
         button.addEventListener("click", () => {
           applyLanguage(button.dataset.language);
-          try { window.localStorage.setItem("cashier-language", language); } catch (_) { /* Language switching still works without storage. */ }
+          try {
+            window.localStorage.setItem("music-tools-language", language);
+            window.localStorage.setItem("cashier-language", language);
+          } catch (_) { /* Language switching still works without storage. */ }
         });
       });
 

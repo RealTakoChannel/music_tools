@@ -6,7 +6,7 @@ const vm = require("node:vm");
 const analysis = require("../audio-analysis.js");
 const i18n = require("../translations.js");
 
-function setup({ savedLanguage, storageBlocked = false } = {}) {
+function setup({ savedLanguage, sharedLanguage, storageBlocked = false } = {}) {
   class Element {
     constructor(id = "") {
       this.id = id;
@@ -62,6 +62,7 @@ function setup({ savedLanguage, storageBlocked = false } = {}) {
     })
   };
   const storage = new Map(savedLanguage ? [["cashier-language", savedLanguage]] : []);
+  if (sharedLanguage) storage.set("music-tools-language", sharedLanguage);
   const window = { CashierI18n: i18n, localStorage: {
     getItem(key) { if (storageBlocked) throw new Error("Storage unavailable"); return storage.get(key) ?? null; },
     setItem(key, value) { if (storageBlocked) throw new Error("Storage unavailable"); storage.set(key, value); }
@@ -276,6 +277,14 @@ test("saved language is restored, with a Chinese fallback when storage is invali
   const { document, switchLanguage } = setup({ storageBlocked: true });
   switchLanguage("en");
   assert.equal(document.documentElement.lang, "en");
+});
+
+test("calculator restores the shared site preference and saves its choice for other tools", () => {
+  const { document, storage, switchLanguage } = setup({ sharedLanguage: "ja", savedLanguage: "en" });
+  assert.equal(document.documentElement.lang, "ja");
+  switchLanguage("en");
+  assert.equal(storage.get("music-tools-language"), "en");
+  assert.equal(storage.get("cashier-language"), "en");
 });
 
 test("input errors and custom file chooser controls follow the selected language", () => {

@@ -6,15 +6,30 @@
   <meta name="theme-color" content="#090b10">
   <meta name="description" content="离线无损拼接 WAV 音频，在片段之间加入 1–2 秒静音，保留原始采样率、位深和声道。">
   <title>音频合并 · Music Tools</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261004">
+  <link rel="stylesheet" href="../shared/language-switch.css">
+  <script defer src="../shared/translations.js?v=20261004"></script>
+  <script defer src="../shared/i18n.js?v=20261004"></script>
   <script defer src="wav-engine.js"></script>
-  <script defer src="app.js"></script>
+  <script defer src="app.js?v=20261004"></script>
 </head>
 <body>
   <main class="page">
     <nav class="topbar" aria-label="工具导航">
-      <a class="brand" href="../index.html" id="homeLink"><span class="brandmark" aria-hidden="true">♫</span> Music Tools <span class="slash">/</span> <span class="muted">Audio Joiner</span></a>
-      <span class="local"><i></i> 离线 · 本机处理</span>
+      <a class="brand home-link" href="../index.html" id="homeLink" aria-label="返回主界面">
+        <span class="brandmark" aria-hidden="true">♫</span>
+        <span>Music Tools</span>
+        <span class="home-divider" aria-hidden="true">/</span>
+        <span class="home-label" id="homeLabel">返回主界面</span>
+      </a>
+      <div class="nav-actions">
+        <span class="local"><i></i> 离线 · 本机处理</span>
+        <div class="language-switch" role="group" aria-label="界面语言">
+          <button type="button" data-language="zh" aria-pressed="true">中文</button>
+          <button type="button" data-language="ja" aria-pressed="false">日本語</button>
+          <button type="button" data-language="en" aria-pressed="false">English</button>
+        </div>
+      </div>
     </nav>
     <header class="hero">
       <div class="eyebrow">A LITTLE SPACE BETWEEN TRACKS</div>
