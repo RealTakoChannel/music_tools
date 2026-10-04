@@ -39,7 +39,7 @@
       background: radial-gradient(circle at 50% -10%, rgba(139, 92, 246, .15), transparent 38%), var(--bg);
     }
     button, input { font: inherit; }
-    input:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+    input:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
 
     .container {
       width: min(940px, 100%);
@@ -93,6 +93,30 @@
     input[type="text"]:focus { border-color: var(--accent); background: #0c0f16; box-shadow: 0 0 0 4px var(--accent-soft); }
     input::placeholder { color: #596274; font-weight: 500; }
 
+    .audio-help { margin-bottom: 20px; padding: 15px 16px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #0b0e14; }
+    .audio-help p, .upload-hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+    .audio-help summary { margin-top: 10px; color: var(--accent-light); font-size: 12px; cursor: pointer; }
+    .threshold-control { margin: 14px 0 8px; }
+    .threshold-control input { width: 100%; accent-color: var(--accent); }
+    .upload-box { margin-bottom: 20px; padding: 13px; border: 1px dashed var(--line-light); border-radius: var(--radius-sm); background: #10141c; }
+    .upload-box > label { color: var(--text); }
+    input[type="file"] { display: block; width: 100%; color: var(--muted); font-size: 12px; }
+    input[type="file"]::file-selector-button, .small-button { padding: 7px 10px; border: 1px solid var(--line-light); border-radius: 7px; color: var(--text); background: #222039; cursor: pointer; }
+    input[type="file"]::file-selector-button { margin-right: 8px; }
+    .upload-hint { margin-top: 8px; font-size: 11px; }
+    .upload-status { margin: 10px 0 0; color: var(--accent-light); font-size: 12px; line-height: 1.6; }
+    .file-list { list-style: none; padding: 0; margin: 10px 0 0; }
+    .file-list:empty { display: none; }
+    .file-row { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); }
+    .file-info { min-width: 0; }
+    .file-name { display: block; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+    .file-detail { display: block; color: var(--muted); font-size: 11px; line-height: 1.7; margin-top: 3px; }
+    .file-detail.failed { color: var(--red); }
+    .small-button { flex-shrink: 0; font-size: 11px; }
+    .small-button:disabled { opacity: .45; cursor: wait; }
+    .upload-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .upload-actions[hidden] { display: none; }
+
     .toggle-row {
       display: flex; align-items: center; justify-content: space-between;
       margin-top: 14px; padding: 11px 12px; color: var(--muted); font-size: 12px; font-weight: 650;
@@ -142,11 +166,30 @@
     </header>
 
     <div class="content">
+      <div class="audio-help">
+        <p>上传纯人声干音，自动扣除静音并填入计费时长。主人声、和声分别上传，可多选或分批追加；同一类别内各文件的有效时长相加，重叠演唱的不同轨道也分别计时。文件仅在本机处理。追加、移除文件或调整阈值会覆盖手动填写的时长。</p>
+        <details>
+          <summary>调整静音检测 · 默认 −45 dB</summary>
+          <div class="threshold-control">
+            <label for="silenceThreshold">静音阈值：<output id="thresholdValue" for="silenceThreshold">−45 dB</output></label>
+            <input type="range" id="silenceThreshold" min="-70" max="-20" step="1" value="-45" aria-describedby="thresholdHint">
+          </div>
+          <p id="thresholdHint">通过每 20 毫秒的音量估算人声段，忽略不足 60 毫秒的孤立声音，不计静音间隔。漏掉轻声时调低阈值；底噪被计入时调高阈值。无法区分人声、伴奏或呼吸声，请核对结果，必要时手动修正。调整阈值会重新填入两侧时长。</p>
+        </details>
+      </div>
       <div class="calculators">
         <section class="calculator">
           <span class="eyebrow">主音计算</span>
           <h2>30 倍计算</h2>
-          <label for="leftInput">输入时间（分.秒 或 分:秒）</label>
+          <div class="upload-box" id="leftUploadBox">
+            <label for="leftFiles">上传主人声干音</label>
+            <input type="file" id="leftFiles" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.aif,.aiff" multiple>
+            <p class="upload-hint">支持多文件。优先使用 WAV；其他格式取决于浏览器支持。</p>
+            <p class="upload-status" id="leftUploadStatus" role="status">尚未添加文件</p>
+            <ul class="file-list" id="leftFileList" aria-label="主人声文件"></ul>
+            <div class="upload-actions" id="leftUploadActions" hidden><button type="button" class="small-button" id="leftRefill">重新填入时长</button><button type="button" class="small-button" id="leftClear">清空文件</button></div>
+          </div>
+          <label for="leftInput">计费时间（分.秒 或 分:秒，可手动修改）</label>
           <input type="text" id="leftInput" placeholder="例如 1.30 或 1:30" inputmode="decimal" autocomplete="off">
           <div class="toggle-row"><span>全曲 · 固定 70 元</span><label class="switch" aria-label="全曲固定 70 元"><input type="checkbox" id="leftFixedPrice"><span class="slider"></span></label></div>
           <div class="toggle-row"><span>特价 · 固定 20 元</span><label class="switch" aria-label="主音固定 20 元"><input type="checkbox" id="leftTwentyPrice"><span class="slider"></span></label></div>
@@ -156,7 +199,15 @@
         <section class="calculator">
           <span class="eyebrow">和声计算</span>
           <h2>20 倍计算</h2>
-          <label for="rightInput">输入时间（分.秒 或 分:秒）</label>
+          <div class="upload-box" id="rightUploadBox">
+            <label for="rightFiles">上传和声干音</label>
+            <input type="file" id="rightFiles" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.aif,.aiff" multiple>
+            <p class="upload-hint">支持多文件。优先使用 WAV；其他格式取决于浏览器支持。</p>
+            <p class="upload-status" id="rightUploadStatus" role="status">尚未添加文件</p>
+            <ul class="file-list" id="rightFileList" aria-label="和声文件"></ul>
+            <div class="upload-actions" id="rightUploadActions" hidden><button type="button" class="small-button" id="rightRefill">重新填入时长</button><button type="button" class="small-button" id="rightClear">清空文件</button></div>
+          </div>
+          <label for="rightInput">计费时间（分.秒 或 分:秒，可手动修改）</label>
           <input type="text" id="rightInput" placeholder="例如 1.30 或 1:30" inputmode="decimal" autocomplete="off">
           <div class="result-box"><div class="result-label">和声价格</div><div id="rightResult" class="result-value" aria-live="polite">0</div></div>
           <div class="total">
@@ -172,6 +223,7 @@
     </div>
   </main>
 
+  <script src="audio-analysis.js"></script>
   <script>
     (() => {
       "use strict";
@@ -186,9 +238,18 @@
       function parseTime(value) {
         const input = value.trim();
         if (input === "") return { value: 0 };
+        const precise = input.match(/^(\d+):(\d{1,2}(?:\.\d{1,2})?)$/);
+        if (precise) {
+          const minutes = Number(precise[1]);
+          const seconds = Number(precise[2]);
+          if (!Number.isFinite(minutes)) return { error: "时间超出范围" };
+          if (seconds >= 60) return { error: "秒数需在 0–59 之间" };
+          return { value: minutes + seconds / 60 };
+        }
         const match = input.match(/^(\d+)(?:[.:](\d{0,2}))?$/);
         if (!match) return { error: "时间格式错误" };
         const minutes = Number(match[1]);
+        if (!Number.isFinite(minutes)) return { error: "时间超出范围" };
         const secondsText = match[2] && match[2].length === 1 ? `${match[2]}0` : (match[2] || "0");
         const seconds = Number(secondsText);
         if (seconds >= 60) return { error: "秒数需在 0–59 之间" };
@@ -228,6 +289,122 @@
         if (mode === "twenty" && leftTwentyPrice.checked) leftFixedPrice.checked = false;
         calculate();
       }
+
+      const analysisAPI = window.DryVocalAnalysis;
+      const threshold = $("silenceThreshold");
+      const groups = ["left", "right"].map((prefix) => ({
+        prefix, input: $(`${prefix}Input`), picker: $(`${prefix}Files`),
+        list: $(`${prefix}FileList`), status: $(`${prefix}UploadStatus`),
+        actions: $(`${prefix}UploadActions`), refill: $(`${prefix}Refill`), clear: $(`${prefix}Clear`),
+        entries: [], busy: false, manual: false, autoFilled: false
+      }));
+      const yieldToUI = () => new Promise((resolve) => setTimeout(resolve, 0));
+      const secondsLabel = (seconds) => `${seconds.toFixed(2)} 秒`;
+
+      function renderGroup(group, fillInput = false) {
+        let total = 0;
+        let successCount = 0;
+        let failedCount = 0;
+        group.list.replaceChildren();
+        group.entries.forEach((entry) => {
+          const row = document.createElement("li");
+          row.className = "file-row";
+          const info = document.createElement("div");
+          info.className = "file-info";
+          const name = document.createElement("span");
+          name.className = "file-name";
+          name.textContent = entry.name;
+          const detail = document.createElement("span");
+          detail.className = "file-detail";
+          if (entry.analysis) {
+            const active = analysisAPI.activeSeconds(entry.analysis, Number(threshold.value));
+            total += active;
+            successCount++;
+            detail.textContent = `有效人声 ${secondsLabel(active)} / 文件总长 ${secondsLabel(entry.analysis.totalSeconds)}${active === 0 ? " · 未检测到人声，可调低阈值核对" : ""}`;
+          } else {
+            detail.textContent = entry.error || "正在分析…";
+            detail.classList.toggle("failed", Boolean(entry.error));
+            if (entry.error) failedCount++;
+          }
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "small-button";
+          remove.textContent = "移除";
+          remove.setAttribute("aria-label", `移除 ${entry.name}`);
+          remove.disabled = group.busy;
+          remove.addEventListener("click", () => {
+            group.entries = group.entries.filter((item) => item !== entry);
+            renderGroup(group, true);
+          });
+          info.append(name, detail);
+          row.append(info, remove);
+          group.list.append(row);
+        });
+        if (fillInput) {
+          group.input.value = analysisAPI.formatInput(total);
+          group.manual = false;
+          group.autoFilled = true;
+          calculate();
+        }
+        group.picker.disabled = group.busy;
+        group.clear.disabled = group.busy;
+        group.refill.disabled = group.busy || successCount === 0;
+        group.actions.hidden = group.entries.length === 0;
+        $(`${group.prefix}UploadBox`).setAttribute("aria-busy", String(group.busy));
+        group.status.textContent = group.busy
+          ? `正在分析 ${group.entries.filter((entry) => !entry.analysis && !entry.error).length} 个文件…`
+          : group.entries.length === 0 ? "尚未添加文件"
+          : `${successCount} 个文件 · 有效人声合计 ${secondsLabel(total)}${failedCount ? ` · ${failedCount} 个文件失败，未计费` : ""}${group.manual ? " · 输入框已手动修改" : group.autoFilled ? " · 已自动填入" : " · 输入框保持原值"}`;
+      }
+
+      async function addFiles(group, files) {
+        if (!files.length || group.busy) return;
+        const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (!OfflineContext || !analysisAPI) {
+          group.status.textContent = "当前浏览器无法分析音频，请使用新版 Chrome、Edge 或手动输入时长。";
+          group.picker.value = "";
+          return;
+        }
+        group.busy = true;
+        const entries = files.map((file) => ({ name: file.name, file }));
+        group.entries.push(...entries);
+        renderGroup(group);
+        for (const entry of entries) {
+          try {
+            if (entry.file.size === 0) throw new Error("empty");
+            // Decode one file at a time; keep only compact frame levels afterwards.
+            const context = new OfflineContext(1, 1, 16000);
+            const buffer = await context.decodeAudioData(await entry.file.arrayBuffer());
+            entry.analysis = await analysisAPI.analyzeBuffer(buffer, yieldToUI);
+          } catch (error) {
+            entry.error = entry.file.size === 0 ? "文件为空，未计费" : "无法读取音频，未计费；请转换为 WAV 后重试";
+          }
+          delete entry.file;
+          renderGroup(group);
+          await yieldToUI();
+        }
+        group.busy = false;
+        group.picker.value = "";
+        // A failed batch must not erase an existing manual quote.
+        renderGroup(group, entries.some((entry) => entry.analysis));
+      }
+
+      groups.forEach((group) => {
+        group.picker.addEventListener("change", () => addFiles(group, Array.from(group.picker.files)));
+        group.clear.addEventListener("click", () => {
+          group.entries = [];
+          renderGroup(group, true);
+        });
+        group.refill.addEventListener("click", () => renderGroup(group, true));
+        group.input.addEventListener("input", () => {
+          group.manual = true;
+          renderGroup(group);
+        });
+      });
+      threshold.addEventListener("input", () => {
+        $("thresholdValue").textContent = `${threshold.value} dB`;
+        groups.forEach((group) => renderGroup(group, group.entries.some((entry) => entry.analysis)));
+      });
 
       leftInput.addEventListener("input", calculate);
       rightInput.addEventListener("input", calculate);
