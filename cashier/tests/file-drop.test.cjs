@@ -4,8 +4,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const analysis = require("../audio-analysis.js");
+const i18n = require("../translations.js");
 
-function setup() {
+function setup({ savedLanguage, storageBlocked = false } = {}) {
   class Element {
     constructor(id = "") {
       this.id = id;
@@ -13,6 +14,8 @@ function setup() {
       this.checked = false;
       this.children = [];
       this.listeners = {};
+      this.attributes = {};
+      this.dataset = {};
       this.classes = new Set();
       this.classList = {
         add: (name) => this.classes.add(name),
@@ -21,7 +24,12 @@ function setup() {
       };
     }
     addEventListener(name, listener) { this.listeners[name] = listener; }
-    setAttribute() {}
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+      if (name.startsWith("data-")) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = String(value);
+      if (name === "placeholder") this.placeholder = String(value);
+    }
+    click() { this.clickCount = (this.clickCount || 0) + 1; this.listeners.click?.(); }
     replaceChildren(...children) { this.children = children; }
     append(...children) { this.children.push(...children); }
     contains(target) { return target === this || this.children.some((child) => child.contains(target)); }
@@ -34,6 +42,17 @@ function setup() {
     return elements.get(id);
   };
   document.createElement = () => new Element();
+  const nodes = [];
+  for (const match of html.matchAll(/<([a-z][\w-]*)\b([^>]*)>/gi)) {
+    const attributes = [...match[2].matchAll(/([\w-]+)="([^"]*)"/g)];
+    const id = attributes.find(([_, name]) => name === "id")?.[2];
+    const element = id ? document.getElementById(id) : new Element();
+    attributes.forEach(([_, name, value]) => element.setAttribute(name, value));
+    nodes.push(element);
+  }
+  document.documentElement = new Element();
+  document.querySelectorAll = (selector) => nodes.filter((element) => Object.hasOwn(element.attributes, selector.slice(1, -1)));
+  document.querySelector = () => new Element();
   document.getElementById("silenceThreshold").value = html.match(/id="silenceThreshold"[^>]*value="([^"]+)"/)[1];
   document.getElementById("roundTotalToggle").checked = true;
   const fakeAnalysis = {
@@ -42,12 +61,18 @@ function setup() {
       levels: new Float32Array(Math.round(duration / .02)).fill(-20), frameSeconds: .02, totalSeconds: duration
     })
   };
-  const window = { DryVocalAnalysis: fakeAnalysis, OfflineAudioContext: class {
+  const storage = new Map(savedLanguage ? [["cashier-language", savedLanguage]] : []);
+  const window = { CashierI18n: i18n, localStorage: {
+    getItem(key) { if (storageBlocked) throw new Error("Storage unavailable"); return storage.get(key) ?? null; },
+    setItem(key, value) { if (storageBlocked) throw new Error("Storage unavailable"); storage.set(key, value); }
+  }, DryVocalAnalysis: fakeAnalysis, OfflineAudioContext: class {
     async decodeAudioData(data) { return data; }
   } };
   const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
   vm.runInNewContext(script, { document, window, setTimeout });
-  return { document, get: (id) => document.getElementById(id) };
+  return { document, storage, get: (id) => document.getElementById(id),
+    switchLanguage: (language) => nodes.find((node) => node.dataset.language === language).click()
+  };
 }
 
 function event(files = [], types = ["Files"]) {
@@ -189,4 +214,78 @@ test("audio drops apply the cap, and file removal and clearing recalculate the s
   get("leftClear").listeners.click();
   assert.equal(get("leftTwentyPrice").checked, false);
   assert.equal(get("leftResult").textContent, 0);
+});
+
+test("all three languages cover the same UI and dynamic message keys", () => {
+  const keys = Object.keys(i18n.messages.zh).sort();
+  for (const language of ["en", "ja"]) assert.deepEqual(Object.keys(i18n.messages[language]).sort(), keys);
+});
+
+test("switching language updates text and accessibility labels without changing a manual quote", () => {
+  const { document, get, switchLanguage, storage } = setup();
+  inputTime(get, "leftInput", "5:00");
+  get("leftFixedPrice").checked = false;
+  get("leftFixedPrice").listeners.change();
+  inputTime(get, "rightInput", "1:00");
+  for (const language of ["en", "ja", "zh"]) {
+    switchLanguage(language);
+    assert.equal(document.documentElement.lang, i18n.languageTags[language]);
+    assert.equal(document.title, i18n.messages[language].title);
+    assert.equal(get("leftChoose").textContent, i18n.messages[language].chooseFiles);
+    assert.equal(get("leftFileList").attributes["aria-label"], i18n.messages[language].leadFiles);
+    assert.equal(get("leftInput").placeholder, i18n.messages[language].timePlaceholder);
+    assert.equal(get("leftInput").value, "5:00");
+    assert.equal(get("leftFixedPrice").checked, false);
+    assert.equal(get("totalResult").textContent, 170);
+    assert.equal(storage.get("cashier-language"), language);
+  }
+});
+
+test("uploaded file details and failures are translated again without changing duration or filename", async () => {
+  const { get, switchLanguage } = setup();
+  get("leftUploadBox").listeners.drop(event([file("音声.wav", 70), { name: "empty.wav", size: 0 }]));
+  await waitFor(() => get("leftInput").value === "1:10.00");
+  switchLanguage("en");
+  assert.equal(get("leftFileList").children[0].children[0].children[0].textContent, "音声.wav");
+  assert.equal(get("leftFileList").children[0].children[0].children[1].textContent, "Active vocals 70.00 s / File duration 70.00 s");
+  assert.equal(get("leftFileList").children[1].children[0].children[1].textContent, "Empty file (not billed)");
+  assert.equal(get("leftInput").value, "1:10.00");
+  assert.equal(get("leftResult").textContent, 35);
+  switchLanguage("ja");
+  assert.equal(get("leftFileList").children[1].children[0].children[1].textContent, i18n.messages.ja.emptyFile);
+  assert.equal(get("leftFileList").children[0].children[1].textContent, "削除");
+});
+
+test("changing language while processing keeps queued files and uses the new language", async () => {
+  const { get, switchLanguage } = setup();
+  let release;
+  const pendingData = new Promise((resolve) => { release = resolve; });
+  get("leftUploadBox").listeners.drop(event([{ name: "pending.wav", size: 100, arrayBuffer: () => pendingData }]));
+  switchLanguage("en");
+  assert.equal(get("leftUploadStatus").textContent, "Analyzing files: 1…");
+  assert.equal(get("leftChoose").disabled, true);
+  release(60);
+  await waitFor(() => get("leftInput").value === "1:00.00");
+  assert.equal(get("leftUploadStatus").textContent, "Files: 1 · Total active vocals: 60.00 s · Auto-filled");
+  assert.equal(get("leftChoose").disabled, false);
+});
+
+test("saved language is restored, with a Chinese fallback when storage is invalid or unavailable", () => {
+  assert.equal(setup({ savedLanguage: "ja" }).document.documentElement.lang, "ja");
+  assert.equal(setup({ savedLanguage: "invalid" }).document.documentElement.lang, "zh-CN");
+  const { document, switchLanguage } = setup({ storageBlocked: true });
+  switchLanguage("en");
+  assert.equal(document.documentElement.lang, "en");
+});
+
+test("input errors and custom file chooser controls follow the selected language", () => {
+  const { get, switchLanguage } = setup();
+  inputTime(get, "leftInput", "bad");
+  switchLanguage("en");
+  assert.equal(get("leftResult").textContent, "Invalid time format");
+  assert.equal(get("totalResult").textContent, "Please correct the inputs");
+  switchLanguage("ja");
+  assert.equal(get("leftResult").textContent, i18n.messages.ja.timeFormat);
+  get("leftChoose").click();
+  assert.equal(get("leftFiles").clickCount, 1);
 });

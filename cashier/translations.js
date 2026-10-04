@@ -1,0 +1,106 @@
+((root) => {
+  "use strict";
+  const languageTags = { zh: "zh-CN", ja: "ja", en: "en" };
+  const messages = {
+    zh: {
+      title: "混音价格计算器 · Music Tools",
+      description: "按主音与和声时长快速计算混音价格。",
+      kicker: "Pricing Utility",
+      heading: "混音价格计算器",
+      languageSelector: "界面语言",
+      formula: "总价 = 主音时间 × 30 + 和声时间 × 20",
+      audioHelp: "上传纯人声干音，先将每个文件的峰值标准化至 −6 dBFS，再扣除静音并填入计费时长。主人声、和声分别上传，可多选或分批追加；同一类别内各文件的有效时长相加，重叠演唱的不同轨道也分别计时。文件仅在本机处理，不修改原文件。追加、移除文件或调整阈值会覆盖手动填写的时长。",
+      thresholdSummary: "调整静音检测 · 默认 −60 dB",
+      thresholdLabel: "静音阈值：",
+      thresholdHint: "每个文件整体标准化至峰值 −6 dBFS 后，通过每 20 毫秒的音量估算人声段，忽略不足 60 毫秒的孤立声音，不计静音间隔。纯静音文件跳过标准化。漏掉轻声时调低阈值；底噪被计入时调高阈值。无法区分人声、伴奏或呼吸声，请核对结果，必要时手动修正。调整阈值会重新填入两侧时长。",
+      leadSection: "主音计算", leadRate: "30 倍计算", leadUpload: "上传主人声干音",
+      harmonySection: "和声计算", harmonyRate: "20 倍计算", harmonyUpload: "上传和声干音",
+      chooseFiles: "选择文件",
+      uploadHint: "可将多个音频直接拖入此框，或点击选择文件，支持分批追加。优先使用 WAV；其他格式取决于浏览器支持。",
+      noFiles: "尚未添加文件", leadFiles: "主人声文件", harmonyFiles: "和声文件",
+      refill: "重新填入时长", clear: "清空文件",
+      timeLabel: "计费时间（分.秒 或 分:秒，可手动修改）", timePlaceholder: "例如 1.30 或 1:30",
+      fullPrice: "全曲 · 固定 70 元", fullPriceAria: "全曲固定 70 元",
+      twentyPrice: "特价 · 固定 20 元", twentyPriceAria: "主音固定 20 元",
+      autoPriceHint: "有声音时，原价满 70 元自动选 70 元，不足 20 元自动选 20 元。修改时长后重新选择，也可手动切换。",
+      leadPrice: "主音价格", harmonyPrice: "和声价格", total: "总价", originalPrice: "原价：",
+      roundTotal: "抹零至 5 元档", roundTotalAria: "抹零至 5 元档",
+      timeRange: "时间超出范围", secondsRange: "秒数需在 0–59 之间", timeFormat: "时间格式错误", fixInput: "请先修正输入",
+      secondsUnit: "秒", fileDuration: "有效人声 {active} / 文件总长 {total}", noVoice: " · 未检测到人声，可调低阈值核对",
+      analyzing: "正在分析…", remove: "移除", removeAria: "移除 {name}", analyzingFiles: "正在分析 {count} 个文件…",
+      filesSummary: "{count} 个文件 · 有效人声合计 {duration}", failedFiles: " · {count} 个文件失败，未计费",
+      manualTime: " · 输入框已手动修改", autoFilled: " · 已自动填入", inputUnchanged: " · 输入框保持原值",
+      browserUnsupported: "当前浏览器无法分析音频，请使用新版 Chrome、Edge 或手动输入时长。",
+      emptyFile: "文件为空，未计费", unreadableFile: "无法读取音频，未计费；请转换为 WAV 后重试"
+    },
+    ja: {
+      title: "ミックス料金計算機 · Music Tools",
+      description: "メインボーカルとハーモニーの長さからミックス料金を計算します。",
+      kicker: "料金計算ツール",
+      heading: "ミックス料金計算機",
+      languageSelector: "表示言語",
+      formula: "合計 = メインボーカルの分数 × 30元 + ハーモニーの分数 × 20元（人民元）",
+      audioHelp: "伴奏のないドライボーカルを追加すると、各ファイルのピークを −6 dBFS に正規化し、無音を除いた長さを料金欄に入力します。メインボーカルとハーモニーは別々に追加してください。複数選択や追加投入に対応し、同じ区分の有効時間を合算します。時間が重なる別トラックも個別に加算します。処理は端末内で行い、元ファイルは変更しません。ファイルの追加・削除やしきい値の変更は、手入力した時間を上書きします。",
+      thresholdSummary: "無音検出の調整 · 初期値 −60 dB",
+      thresholdLabel: "無音しきい値：",
+      thresholdHint: "各ファイル全体のピークを −6 dBFS に正規化してから、20ミリ秒ごとの音量でボーカル区間を推定します。60ミリ秒未満の単発音と無音区間は除外します。完全な無音は正規化しません。小さな声を見逃す場合はしきい値を下げ、ノイズを拾う場合は上げてください。伴奏や息の音と声は区別できないため、結果を確認し、必要に応じて手動で修正してください。しきい値の変更で両方の時間欄を更新します。",
+      leadSection: "メインボーカル", leadRate: "30元 / 分", leadUpload: "メインボーカルのドライ音声を追加",
+      harmonySection: "ハーモニー", harmonyRate: "20元 / 分", harmonyUpload: "ハーモニーのドライ音声を追加",
+      chooseFiles: "ファイルを選択",
+      uploadHint: "複数の音声をこの枠にドラッグするか、ボタンで選択してください。追加投入も可能です。WAVを推奨します。他の形式はブラウザーの対応状況によります。",
+      noFiles: "ファイル未追加", leadFiles: "メインボーカルのファイル", harmonyFiles: "ハーモニーのファイル",
+      refill: "検出時間を再入力", clear: "ファイルをクリア",
+      timeLabel: "料金計算時間（分.秒 または 分:秒・手動編集可）", timePlaceholder: "例：1.30 または 1:30",
+      fullPrice: "フル尺 · 定額70元", fullPriceAria: "メインボーカルを定額70元にする",
+      twentyPrice: "特別料金 · 定額20元", twentyPriceAria: "メインボーカルを定額20元にする",
+      autoPriceHint: "声がある場合、時間料金が70元以上なら70元、20元未満なら20元を自動選択します。時間の変更で再判定します。手動切り替えも可能です。",
+      leadPrice: "メインボーカル料金", harmonyPrice: "ハーモニー料金", total: "合計（人民元）", originalPrice: "通常料金：",
+      roundTotal: "5元単位に切り捨て", roundTotalAria: "合計を5元単位に切り捨てる",
+      timeRange: "時間が範囲を超えています", secondsRange: "秒は0〜59で入力してください", timeFormat: "時間の形式が正しくありません", fixInput: "入力を修正してください",
+      secondsUnit: "秒", fileDuration: "有効ボーカル {active} / ファイル全体 {total}", noVoice: " · 声を検出できませんでした。しきい値を下げて確認してください",
+      analyzing: "解析中…", remove: "削除", removeAria: "{name}を削除", analyzingFiles: "{count}ファイルを解析中…",
+      filesSummary: "{count}ファイル · 有効ボーカル合計 {duration}", failedFiles: " · {count}ファイルは読み込み失敗・料金対象外",
+      manualTime: " · 時間欄は手動編集済み", autoFilled: " · 自動入力済み", inputUnchanged: " · 時間欄は変更していません",
+      browserUnsupported: "このブラウザーでは音声を解析できません。最新のChrome・Edgeを使うか、時間を手入力してください。",
+      emptyFile: "空のファイル・料金対象外", unreadableFile: "音声を読み込めません・料金対象外。WAVに変換して再試行してください"
+    },
+    en: {
+      title: "Mixing Price Calculator · Music Tools",
+      description: "Calculate mixing prices from lead vocal and harmony duration.",
+      kicker: "Pricing Utility",
+      heading: "Mixing Price Calculator",
+      languageSelector: "Interface language",
+      formula: "Total = lead vocal minutes × CNY 30 + harmony minutes × CNY 20",
+      audioHelp: "Add dry, isolated vocals. Each file is peak-normalized to −6 dBFS before silence is excluded and the billable duration is filled in. Add lead vocals and harmonies separately. Select multiple files or add more in batches. Active durations are summed within each group; overlapping tracks are counted separately. Processing stays on your device and leaves the source files intact. Adding or removing files, or changing the threshold, overwrites manually entered durations.",
+      thresholdSummary: "Adjust silence detection · Default −60 dB",
+      thresholdLabel: "Silence threshold: ",
+      thresholdHint: "Each whole file is peak-normalized to −6 dBFS, then its volume is measured in 20 ms frames to estimate vocal activity. Isolated sounds shorter than 60 ms and silent gaps are excluded. Completely silent files skip normalization. Lower the threshold for quiet vocals; raise it if background noise is counted. This cannot distinguish vocals from accompaniment or breaths. Check the results and edit durations if needed. Changing the threshold refills both duration fields.",
+      leadSection: "Lead vocals", leadRate: "CNY 30 / min", leadUpload: "Add dry lead vocals",
+      harmonySection: "Harmonies", harmonyRate: "CNY 20 / min", harmonyUpload: "Add dry harmonies",
+      chooseFiles: "Choose files",
+      uploadHint: "Drop multiple audio files into this box or choose files. You can add more in batches. WAV is recommended; other formats depend on browser support.",
+      noFiles: "No files added", leadFiles: "Lead vocal files", harmonyFiles: "Harmony files",
+      refill: "Refill duration", clear: "Clear files",
+      timeLabel: "Billable duration (min.sec or min:sec; editable)", timePlaceholder: "e.g. 1.30 or 1:30",
+      fullPrice: "Full song · Fixed CNY 70", fullPriceAria: "Fixed CNY 70 for lead vocals",
+      twentyPrice: "Special · Fixed CNY 20", twentyPriceAria: "Fixed CNY 20 for lead vocals",
+      autoPriceHint: "For nonzero vocal duration, a time-based price of CNY 70 or more selects CNY 70; below CNY 20 selects CNY 20. Duration changes trigger a new selection. You can also switch manually.",
+      leadPrice: "Lead vocal price", harmonyPrice: "Harmony price", total: "Total (CNY)", originalPrice: "Original: ",
+      roundTotal: "Round down to a multiple of CNY 5", roundTotalAria: "Round total down to a multiple of CNY 5",
+      timeRange: "Duration is out of range", secondsRange: "Seconds must be between 0 and 59", timeFormat: "Invalid time format", fixInput: "Please correct the inputs",
+      secondsUnit: "s", fileDuration: "Active vocals {active} / File duration {total}", noVoice: " · No vocals detected; try a lower threshold",
+      analyzing: "Analyzing…", remove: "Remove", removeAria: "Remove {name}", analyzingFiles: "Analyzing files: {count}…",
+      filesSummary: "Files: {count} · Total active vocals: {duration}", failedFiles: " · Failed files: {count} (not billed)",
+      manualTime: " · Duration edited manually", autoFilled: " · Auto-filled", inputUnchanged: " · Duration field unchanged",
+      browserUnsupported: "This browser cannot analyze audio. Use a recent Chrome or Edge, or enter the duration manually.",
+      emptyFile: "Empty file (not billed)", unreadableFile: "Cannot read audio (not billed); convert to WAV and try again"
+    }
+  };
+  function translate(language, key, values = {}) {
+    const dictionary = Object.hasOwn(messages, language) ? messages[language] : messages.zh;
+    return (dictionary[key] ?? messages.zh[key] ?? key).replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
+  }
+  const api = { messages, languageTags, translate };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.CashierI18n = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
