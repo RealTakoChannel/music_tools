@@ -147,6 +147,50 @@
     .original-total-value { text-decoration: line-through; text-decoration-color: var(--red); }
     .error { color: var(--red) !important; font-size: 16px !important; line-height: 1.35 !important; }
 
+    @keyframes reveal-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes details-in {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes analysis-spin { to { transform: rotate(360deg); } }
+    @keyframes drop-glow {
+      from { box-shadow: 0 0 0 3px var(--accent-soft); }
+      to { box-shadow: 0 0 0 5px rgba(139,92,246,.22), 0 0 22px rgba(139,92,246,.12); }
+    }
+    .header { animation: reveal-in .45s cubic-bezier(.2,.7,.2,1) backwards; }
+    .audio-help { animation: reveal-in .45s cubic-bezier(.2,.7,.2,1) .06s backwards; }
+    .calculator {
+      animation: reveal-in .5s cubic-bezier(.2,.7,.2,1) .12s backwards;
+      transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+    .calculator:nth-child(2) { animation-delay: .2s; }
+    .upload-box { transition: border-color .2s ease, background .2s ease, box-shadow .2s ease; }
+    .upload-box.drag-over { animation: drop-glow .8s ease-in-out infinite alternate; }
+    .upload-box[aria-busy="true"] .upload-status::before {
+      content: ""; display: inline-block; width: 11px; height: 11px; margin-right: 7px; vertical-align: -1px;
+      border: 2px solid var(--accent-soft); border-top-color: var(--accent-light); border-radius: 50%;
+      animation: analysis-spin .8s linear infinite;
+    }
+    .small-button, input[type="file"]::file-selector-button {
+      transition: transform .15s ease, border-color .18s ease, background .18s ease;
+    }
+    .small-button:not(:disabled):active, input[type="file"]:not(:disabled)::file-selector-button:active { transform: scale(.96); }
+    .toggle-row { transition: border-color .2s ease, background .2s ease; }
+    .toggle-row:focus-within { border-color: #655487; background: #151322; }
+    .audio-help summary { transition: color .18s ease; }
+    .audio-help details[open] .threshold-control, .audio-help details[open] #thresholdHint { animation: details-in .24s ease backwards; }
+    .original-total.visible { animation: details-in .2s ease backwards; }
+    @media (hover: hover) and (pointer: fine) {
+      .calculator:hover { transform: translateY(-3px); border-color: #44395f; box-shadow: 0 10px 26px rgba(0,0,0,.15); }
+      .small-button:not(:disabled):hover, input[type="file"]:not(:disabled)::file-selector-button:hover { border-color: var(--accent-light); background: #302548; }
+      .upload-box:hover { border-color: #655487; }
+      .upload-box.drag-over:hover { border-color: var(--accent-light); }
+      .audio-help summary:hover { color: #d8d0ff; }
+    }
+
     @media (max-width: 620px) {
       body { padding: 20px 12px 45px; }
       .header, .content { padding-left: 20px; padding-right: 20px; }
@@ -155,7 +199,8 @@
       .total-price-stack { text-align: left; }
     }
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+      .calculator:hover, .small-button:active, input[type="file"]::file-selector-button:active { transform: none !important; }
     }
   </style>
 </head>
@@ -235,6 +280,7 @@
       const leftFixedPrice = $("leftFixedPrice");
       const leftTwentyPrice = $("leftTwentyPrice");
       const roundTotalToggle = $("roundTotalToggle");
+      const motionPreference = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 
       function parseTime(value) {
         const input = value.trim();
@@ -259,9 +305,25 @@
 
       function setResult(id, value, error) {
         const element = $(id);
+        const changed = element.textContent !== String(error || value);
         element.textContent = error || value;
         element.classList.toggle("error", Boolean(error));
+        if (changed) {
+          element.getAnimations?.().forEach((animation) => animation.cancel());
+          if (!error && !motionPreference?.matches) {
+            element.animate?.([
+              { opacity: .5, transform: "translateY(4px) scale(.98)" },
+              { opacity: 1, transform: "translateY(0) scale(1)" }
+            ], { duration: 260, easing: "cubic-bezier(.2,.7,.2,1)" });
+          }
+        }
       }
+
+      motionPreference?.addEventListener("change", (event) => {
+        if (event.matches) ["leftResult", "rightResult", "totalResult"].forEach((id) => {
+          $(id).getAnimations?.().forEach((animation) => animation.cancel());
+        });
+      });
 
       function calculate() {
         const left = parseTime(leftInput.value);
