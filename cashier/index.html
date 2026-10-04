@@ -239,6 +239,7 @@
           <input type="text" id="leftInput" placeholder="例如 1.30 或 1:30" inputmode="decimal" autocomplete="off">
           <div class="toggle-row"><span>全曲 · 固定 70 元</span><label class="switch" aria-label="全曲固定 70 元"><input type="checkbox" id="leftFixedPrice"><span class="slider"></span></label></div>
           <div class="toggle-row"><span>特价 · 固定 20 元</span><label class="switch" aria-label="主音固定 20 元"><input type="checkbox" id="leftTwentyPrice"><span class="slider"></span></label></div>
+          <p class="upload-hint">有声音时，原价满 70 元自动选 70 元，不足 20 元自动选 20 元。修改时长后重新选择，也可手动切换。</p>
           <div class="result-box"><div class="result-label">主音价格</div><div id="leftResult" class="result-value" aria-live="polite">0</div></div>
         </section>
 
@@ -281,6 +282,7 @@
       const leftTwentyPrice = $("leftTwentyPrice");
       const roundTotalToggle = $("roundTotalToggle");
       const motionPreference = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+      let lastAutoPriceInput;
 
       function parseTime(value) {
         const input = value.trim();
@@ -328,6 +330,15 @@
       function calculate() {
         const left = parseTime(leftInput.value);
         const right = parseTime(rightInput.value);
+        const currentLeftInput = leftInput.value.trim();
+        if (currentLeftInput !== lastAutoPriceInput) {
+          lastAutoPriceInput = currentLeftInput;
+          // Compare the displayed time-based price, before either fixed rate.
+          const timePrice = Number((left.value * 30).toFixed(2));
+          const hasVocalTime = !left.error && left.value > 0 && Number.isFinite(timePrice);
+          leftFixedPrice.checked = hasVocalTime && timePrice >= 70;
+          leftTwentyPrice.checked = hasVocalTime && timePrice < 20;
+        }
         const hasFixedLeftPrice = leftFixedPrice.checked || leftTwentyPrice.checked;
         const leftValue = leftTwentyPrice.checked ? 20 : (leftFixedPrice.checked ? 70 : left.value * 30);
         const rightValue = right.value * 20;

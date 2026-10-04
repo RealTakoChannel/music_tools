@@ -87,7 +87,8 @@ test("files dropped during analysis are queued and included in the final total",
   assert.equal(get("leftFileList").children.length, 3);
   release(2);
   await waitFor(() => get("leftInput").value === "0:13.00");
-  assert.equal(get("leftResult").textContent, 6.5);
+  assert.equal(get("leftResult").textContent, 20);
+  assert.equal(get("leftTwentyPrice").checked, true);
   assert.equal(get("leftFiles").disabled, false);
 });
 
@@ -119,4 +120,73 @@ test("file drops outside upload boxes cannot navigate away or leave stale highli
   over.target = document;
   document.listeners.dragover(over);
   assert.equal(over.dataTransfer.dropEffect, "none");
+});
+
+function inputTime(get, id, value) {
+  get(id).value = value;
+  get(id).listeners.input();
+}
+
+test("lead time selects the automatic fixed price at the 20 and 70 yuan boundaries", () => {
+  const { get } = setup();
+  for (const [time, price, full, twenty] of [
+    ["0:39", 20, false, true],
+    ["0:40", 20, false, false],
+    ["2:19", 69.5, false, false],
+    ["2:20", 70, true, false],
+    ["5:00", 70, true, false],
+    ["0:30", 20, false, true],
+    ["1:00", 30, false, false],
+    ["0:00", 0, false, false],
+    ["", 0, false, false]
+  ]) {
+    inputTime(get, "leftInput", time);
+    assert.equal(get("leftResult").textContent, price, time);
+    assert.equal(get("leftFixedPrice").checked, full, time);
+    assert.equal(get("leftTwentyPrice").checked, twenty, time);
+  }
+});
+
+test("invalid lead time clears automatic switches and still shows an input error", () => {
+  const { get } = setup();
+  inputTime(get, "leftInput", "5:00");
+  inputTime(get, "leftInput", "bad");
+  assert.equal(get("leftFixedPrice").checked, false);
+  assert.equal(get("leftTwentyPrice").checked, false);
+  assert.equal(get("leftResult").textContent, "时间格式错误");
+  assert.equal(get("totalResult").textContent, "请先修正输入");
+});
+
+test("manual fixed-price choices remain until lead time changes", () => {
+  const { get } = setup();
+  inputTime(get, "leftInput", "5:00");
+  get("leftFixedPrice").checked = false;
+  get("leftFixedPrice").listeners.change();
+  assert.equal(get("leftResult").textContent, 150);
+  inputTime(get, "rightInput", "1:00");
+  assert.equal(get("leftFixedPrice").checked, false);
+  assert.equal(get("totalResult").textContent, 170);
+  get("leftTwentyPrice").checked = true;
+  get("leftTwentyPrice").listeners.change();
+  assert.equal(get("leftResult").textContent, 20);
+  inputTime(get, "leftInput", "6:00");
+  assert.equal(get("leftFixedPrice").checked, true);
+  assert.equal(get("leftTwentyPrice").checked, false);
+  assert.equal(get("leftResult").textContent, 70);
+});
+
+test("audio drops apply the cap, and file removal and clearing recalculate the switches", async () => {
+  const { get } = setup();
+  get("leftUploadBox").listeners.drop(event([file("long.wav", 150), file("short.wav", 10)]));
+  await waitFor(() => get("leftInput").value === "2:40.00");
+  assert.equal(get("leftFixedPrice").checked, true);
+  assert.equal(get("leftResult").textContent, 70);
+  get("leftFileList").children[0].children[1].listeners.click();
+  assert.equal(get("leftInput").value, "0:10.00");
+  assert.equal(get("leftFixedPrice").checked, false);
+  assert.equal(get("leftTwentyPrice").checked, true);
+  assert.equal(get("leftResult").textContent, 20);
+  get("leftClear").listeners.click();
+  assert.equal(get("leftTwentyPrice").checked, false);
+  assert.equal(get("leftResult").textContent, 0);
 });
