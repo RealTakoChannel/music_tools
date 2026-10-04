@@ -1,0 +1,13 @@
+# Generated files and build dependencies
+/tmp/
+/outputs/
+/.build/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Machine-specific files
+*.lnk
+.DS_Store
+Thumbs.db
+Desktop.ini

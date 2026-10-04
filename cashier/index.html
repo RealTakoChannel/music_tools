@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090b10">
+  <meta name="description" content="按主音与和声时长快速计算混音价格。">
+  <title>混音价格计算器 · Music Tools</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b10;
+      --surface: #10131a;
+      --surface-soft: #151923;
+      --line: #252b38;
+      --line-light: #333b4d;
+      --text: #f4f7fb;
+      --muted: #aab3c5;
+      --quiet: #6f788a;
+      --accent: #8b5cf6;
+      --accent-light: #a78bfa;
+      --accent-soft: rgba(139, 92, 246, .14);
+      --green: #43e6a4;
+      --red: #ff8e9c;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .34), 0 1px 0 rgba(255, 255, 255, .03) inset;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 46px 20px 70px;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% -10%, rgba(139, 92, 246, .15), transparent 38%), var(--bg);
+    }
+    button, input { font: inherit; }
+    input:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+
+    .container {
+      width: min(940px, 100%);
+      margin: 0 auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.018), transparent), var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .header {
+      padding: 31px 34px 29px;
+      border-bottom: 1px solid var(--line);
+      background: radial-gradient(circle at 82% 10%, rgba(139,92,246,.12), transparent 40%);
+    }
+    .header::before {
+      content: "Pricing Utility";
+      display: block;
+      margin-bottom: 10px;
+      color: var(--accent-light);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.15rem); font-weight: 800; letter-spacing: -.035em; }
+    .subtitle { margin: 9px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .content { padding: 26px 34px 34px; }
+    .calculators { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .calculator { padding: 22px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-soft); }
+    .calculator h2 { margin: 2px 0 20px; font-size: 1.08rem; letter-spacing: -.01em; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 7px;
+      color: var(--accent-light);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px rgba(139,92,246,.7); }
+    label { display: block; margin-bottom: 8px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    input[type="text"] {
+      width: 100%; min-height: 53px; padding: 0 14px; color: var(--text); font-size: 16px; font-weight: 650;
+      border: 1px solid var(--line); border-radius: var(--radius-sm); outline: none; background: #0b0e14;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    input[type="text"]:hover { border-color: var(--line-light); }
+    input[type="text"]:focus { border-color: var(--accent); background: #0c0f16; box-shadow: 0 0 0 4px var(--accent-soft); }
+    input::placeholder { color: #596274; font-weight: 500; }
+
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 14px; padding: 11px 12px; color: var(--muted); font-size: 12px; font-weight: 650;
+      border: 1px solid rgba(51,59,77,.65); border-radius: 10px; background: #10141c;
+    }
+    .switch { position: relative; width: 42px; height: 22px; flex: 0 0 auto; margin: 0; }
+    .switch input { width: 0; height: 0; opacity: 0; }
+    .slider { position: absolute; inset: 0; cursor: pointer; border-radius: 999px; background: #454d5e; transition: background-color .18s ease; }
+    .slider::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; border-radius: 50%; background: #f4f4f5; transition: left .2s cubic-bezier(.2,.8,.2,1); }
+    .switch input:focus-visible + .slider { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { left: 23px; }
+
+    .result-box { margin-top: 20px; padding: 16px; border: 1px solid rgba(67,230,164,.13); border-radius: 11px; background: #0e1416; }
+    .result-label { margin-bottom: 7px; color: var(--quiet); font-size: 12px; font-weight: 650; }
+    .result-value { color: var(--green); font-size: 31px; font-weight: 800; line-height: 1; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+    .total {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 20px; padding: 19px 20px; border: 1px solid rgba(139,92,246,.34); border-radius: 12px;
+      background: radial-gradient(circle at 85% 20%, rgba(139,92,246,.18), transparent 55%), var(--accent-soft);
+    }
+    .total .result-label { margin: 0; color: #c7bdf0; }
+    .total .result-value { color: #d8d0ff; font-size: 38px; }
+    .total-price-stack { text-align: right; }
+    .original-total { display: none; margin-bottom: 6px; color: #8f89aa; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .original-total.visible { display: block; }
+    .original-total-value { text-decoration: line-through; text-decoration-color: var(--red); }
+    .error { color: var(--red) !important; font-size: 16px !important; line-height: 1.35 !important; }
+
+    @media (max-width: 620px) {
+      body { padding: 20px 12px 45px; }
+      .header, .content { padding-left: 20px; padding-right: 20px; }
+      .calculators { grid-template-columns: 1fr; }
+      .total { align-items: flex-start; flex-direction: column; gap: 9px; }
+      .total-price-stack { text-align: left; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1>混音价格计算器</h1>
+      <p class="subtitle">总价 = 主音时间 × 30 + 和声时间 × 20</p>
+    </header>
+
+    <div class="content">
+      <div class="calculators">
+        <section class="calculator">
+          <span class="eyebrow">主音计算</span>
+          <h2>30 倍计算</h2>
+          <label for="leftInput">输入时间（分.秒 或 分:秒）</label>
+          <input type="text" id="leftInput" placeholder="例如 1.30 或 1:30" inputmode="decimal" autocomplete="off">
+          <div class="toggle-row"><span>全曲 · 固定 70 元</span><label class="switch" aria-label="全曲固定 70 元"><input type="checkbox" id="leftFixedPrice"><span class="slider"></span></label></div>
+          <div class="toggle-row"><span>特价 · 固定 20 元</span><label class="switch" aria-label="主音固定 20 元"><input type="checkbox" id="leftTwentyPrice"><span class="slider"></span></label></div>
+          <div class="result-box"><div class="result-label">主音价格</div><div id="leftResult" class="result-value" aria-live="polite">0</div></div>
+        </section>
+
+        <section class="calculator">
+          <span class="eyebrow">和声计算</span>
+          <h2>20 倍计算</h2>
+          <label for="rightInput">输入时间（分.秒 或 分:秒）</label>
+          <input type="text" id="rightInput" placeholder="例如 1.30 或 1:30" inputmode="decimal" autocomplete="off">
+          <div class="result-box"><div class="result-label">和声价格</div><div id="rightResult" class="result-value" aria-live="polite">0</div></div>
+          <div class="total">
+            <div class="result-label">总价</div>
+            <div class="total-price-stack">
+              <div id="originalTotal" class="original-total">原价：<span id="originalTotalValue" class="original-total-value">0</span></div>
+              <div id="totalResult" class="result-value" aria-live="polite">0</div>
+            </div>
+          </div>
+          <div class="toggle-row"><span>抹零至 5 元档</span><label class="switch" aria-label="抹零至 5 元档"><input type="checkbox" id="roundTotalToggle" checked><span class="slider"></span></label></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const $ = (id) => document.getElementById(id);
+      const leftInput = $("leftInput");
+      const rightInput = $("rightInput");
+      const leftFixedPrice = $("leftFixedPrice");
+      const leftTwentyPrice = $("leftTwentyPrice");
+      const roundTotalToggle = $("roundTotalToggle");
+
+      function parseTime(value) {
+        const input = value.trim();
+        if (input === "") return { value: 0 };
+        const match = input.match(/^(\d+)(?:[.:](\d{0,2}))?$/);
+        if (!match) return { error: "时间格式错误" };
+        const minutes = Number(match[1]);
+        const secondsText = match[2] && match[2].length === 1 ? `${match[2]}0` : (match[2] || "0");
+        const seconds = Number(secondsText);
+        if (seconds >= 60) return { error: "秒数需在 0–59 之间" };
+        return { value: minutes + seconds / 60 };
+      }
+
+      function setResult(id, value, error) {
+        const element = $(id);
+        element.textContent = error || value;
+        element.classList.toggle("error", Boolean(error));
+      }
+
+      function calculate() {
+        const left = parseTime(leftInput.value);
+        const right = parseTime(rightInput.value);
+        const hasFixedLeftPrice = leftFixedPrice.checked || leftTwentyPrice.checked;
+        const leftValue = leftTwentyPrice.checked ? 20 : (leftFixedPrice.checked ? 70 : left.value * 30);
+        const rightValue = right.value * 20;
+        const leftError = hasFixedLeftPrice ? "" : left.error;
+        const totalError = leftError || right.error;
+
+        setResult("leftResult", Number.isFinite(leftValue) ? Number(leftValue.toFixed(2)) : "", leftError);
+        setResult("rightResult", Number.isFinite(rightValue) ? Number(rightValue.toFixed(2)) : "", right.error);
+
+        const rawTotal = leftValue + rightValue;
+        const preciseTotal = Number(rawTotal.toFixed(2));
+        const finalTotal = roundTotalToggle.checked ? Math.floor(preciseTotal / 5) * 5 : preciseTotal;
+        setResult("totalResult", totalError ? "" : finalTotal, totalError ? "请先修正输入" : "");
+
+        const originalTotal = $("originalTotal");
+        $("originalTotalValue").textContent = totalError ? "" : preciseTotal;
+        originalTotal.classList.toggle("visible", !totalError && roundTotalToggle.checked && finalTotal !== preciseTotal);
+      }
+
+      function setLeftPriceMode(mode) {
+        if (mode === "full" && leftFixedPrice.checked) leftTwentyPrice.checked = false;
+        if (mode === "twenty" && leftTwentyPrice.checked) leftFixedPrice.checked = false;
+        calculate();
+      }
+
+      leftInput.addEventListener("input", calculate);
+      rightInput.addEventListener("input", calculate);
+      leftFixedPrice.addEventListener("change", () => setLeftPriceMode("full"));
+      leftTwentyPrice.addEventListener("change", () => setLeftPriceMode("twenty"));
+      roundTotalToggle.addEventListener("change", calculate);
+      calculate();
+    })();
+  </script>
+</body>
+</html>

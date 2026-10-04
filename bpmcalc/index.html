@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#090b10" />
+  <title>BPM 错误修正工具</title>
+  <style>
+    :root {
+      --bg: #090b10;
+      --panel: #10131a;
+      --panel-2: #151923;
+      --panel-hover: #1a2030;
+      --border: #252b38;
+      --border-light: #333b4d;
+      --text: #f4f7fb;
+      --text-2: #aab3c5;
+      --text-3: #6f788a;
+      --accent: #8b5cf6;
+      --accent-2: #a78bfa;
+      --accent-soft: rgba(139, 92, 246, 0.14);
+      --green: #43e6a4;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.34), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+    }
+
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 50% -10%, rgba(139, 92, 246, 0.15), transparent 38%), var(--bg);
+    }
+    button, input { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 3px;
+    }
+
+    .page { width: min(100% - 28px, 920px); margin: 0 auto; padding: 46px 0 70px; }
+    .header { margin-bottom: 28px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; margin-bottom: 13px;
+      color: var(--accent-2); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: ""; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 18px var(--accent);
+    }
+    h1 { margin: 0 0 10px; font-size: clamp(29px, 5vw, 45px); line-height: 1.05; letter-spacing: -.04em; }
+    .subtitle { margin: 0; max-width: 680px; color: var(--text-2); font-size: 15px; line-height: 1.7; }
+    .grid { display: grid; gap: 16px; }
+    .two-column { grid-template-columns: minmax(0, 1.3fr) minmax(250px, .7fr); }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.018), transparent), var(--panel);
+      border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    }
+    .card-body { padding: 22px; }
+    .section-title {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      margin: 0 0 18px; font-size: 15px; font-weight: 700; letter-spacing: -.01em;
+    }
+    .section-hint { color: var(--text-3); font-size: 12px; font-weight: 500; }
+    .input-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px; }
+    .field label { display: block; margin-bottom: 8px; color: var(--text-2); font-size: 12px; font-weight: 650; }
+    .input-wrap { position: relative; }
+    .input-wrap input {
+      width: 100%; height: 58px; padding: 0 54px 0 15px; color: var(--text);
+      font-size: 19px; font-weight: 700; background: #0b0e14; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .input-wrap input:hover { border-color: var(--border-light); }
+    .input-wrap input:focus { border-color: var(--accent); background: #0c0f16; box-shadow: 0 0 0 4px var(--accent-soft); }
+    .suffix {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text-3); font-size: 11px; font-weight: 800; pointer-events: none;
+    }
+    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+    .range-text { margin-top: 13px; color: var(--text-3); font-size: 12px; line-height: 1.6; }
+    .range-text strong { color: var(--text-2); }
+
+    .audio-analyzer { margin-bottom: 16px; }
+    .audio-analyzer .card-body { padding: 20px; }
+    .audio-analyzer .section-title { margin-bottom: 14px; }
+    .local-badge {
+      display: inline-flex; align-items: center; gap: 6px; color: var(--green);
+      font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase;
+    }
+    .local-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px rgba(67,230,164,.65); }
+    .audio-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+    .audio-dropzone {
+      min-height: 142px; display: flex; align-items: center; justify-content: center; gap: 20px;
+      padding: 24px; text-align: left; cursor: pointer; border: 1px dashed #3a4254;
+      border-radius: 15px; background: radial-gradient(circle at 18% 50%, rgba(139,92,246,.12), transparent 36%), #0c0f16;
+      transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .1s ease;
+    }
+    .audio-dropzone:hover { border-color: #655487; background-color: #10141e; }
+    .audio-dropzone:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+    .audio-dropzone.is-dragging { border-color: var(--accent-2); background-color: #141425; box-shadow: 0 0 0 4px var(--accent-soft); transform: scale(.995); }
+    .audio-dropzone.is-analyzing { pointer-events: none; border-style: solid; }
+    .audio-wave {
+      width: 58px; height: 58px; flex: none; display: flex; align-items: center; justify-content: center; gap: 4px;
+      border: 1px solid rgba(167,139,250,.26); border-radius: 17px; background: rgba(139,92,246,.1);
+    }
+    .audio-wave span { width: 3px; border-radius: 3px; background: var(--accent-2); box-shadow: 0 0 9px rgba(139,92,246,.34); }
+    .audio-wave span:nth-child(1), .audio-wave span:nth-child(5) { height: 12px; }
+    .audio-wave span:nth-child(2), .audio-wave span:nth-child(4) { height: 25px; }
+    .audio-wave span:nth-child(3) { height: 36px; background: var(--green); }
+    .audio-dropzone.is-analyzing .audio-wave span { animation: audioPulse .75s ease-in-out infinite alternate; }
+    .audio-dropzone.is-analyzing .audio-wave span:nth-child(2) { animation-delay: .12s; }
+    .audio-dropzone.is-analyzing .audio-wave span:nth-child(3) { animation-delay: .24s; }
+    .audio-dropzone.is-analyzing .audio-wave span:nth-child(4) { animation-delay: .36s; }
+    .audio-dropzone.is-analyzing .audio-wave span:nth-child(5) { animation-delay: .48s; }
+    @keyframes audioPulse { to { height: 9px; opacity: .55; } }
+    .audio-copy { min-width: 0; }
+    .audio-primary { color: var(--text); font-size: 15px; font-weight: 750; }
+    .audio-secondary { margin-top: 7px; color: var(--text-3); font-size: 11px; line-height: 1.55; }
+    .audio-status {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      margin-top: 12px; min-height: 22px; color: var(--text-3); font-size: 11px;
+    }
+    .audio-status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .audio-status-result { flex: none; display: none; align-items: baseline; gap: 6px; color: var(--green); }
+    .audio-status-result.visible { display: flex; }
+    .audio-status-result strong { font-size: 19px; font-weight: 800; letter-spacing: -.025em; }
+    .audio-status-result span { color: var(--text-3); font-size: 10px; font-weight: 700; }
+    .audio-error { color: #ff8e9c; }
+
+    .tap-area { height: 100%; display: flex; flex-direction: column; }
+    .tap-title-actions { display: flex; align-items: center; gap: 10px; }
+    .reset-button {
+      min-height: 32px; padding: 0 11px; color: var(--text-2); font-size: 12px; font-weight: 700;
+      background: transparent; border: 1px solid var(--border-light); border-radius: 9px; cursor: pointer;
+      transition: color .16s ease, border-color .16s ease, background .16s ease, transform .08s ease;
+    }
+    .reset-button:hover:not(:disabled) { color: var(--text); border-color: #655487; background: var(--accent-soft); }
+    .reset-button:active:not(:disabled) { transform: scale(.96); }
+    .reset-button:disabled { opacity: .42; cursor: not-allowed; }
+    .tap-button {
+      position: relative; flex: 1; min-height: 135px; width: 100%; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; color: var(--text);
+      background: radial-gradient(circle at 50% 25%, rgba(139,92,246,.21), transparent 58%), var(--panel-2);
+      border: 1px solid var(--border); border-radius: 16px; cursor: pointer; user-select: none; touch-action: manipulation;
+      transition: transform .08s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+    .tap-button:hover { border-color: #4a3a70; background-color: #181b26; }
+    .tap-button:active, .tap-button.is-tapping { transform: scale(.982); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+    .tap-main { font-size: 25px; font-weight: 800; letter-spacing: -.03em; }
+    .tap-sub { margin-top: 6px; color: var(--text-2); font-size: 12px; }
+    .keycap {
+      display: inline-block; min-width: 34px; margin: 0 2px; padding: 1px 7px; color: var(--accent-2);
+      font-size: 10px; font-weight: 800; line-height: 18px; background: rgba(139,92,246,.1);
+      border: 1px solid rgba(167,139,250,.32); border-radius: 5px; box-shadow: 0 2px 0 rgba(0,0,0,.3);
+    }
+    .tap-bpm { margin-top: 12px; color: var(--accent-2); font-size: 13px; font-weight: 700; }
+
+    .result-card {
+      margin-top: 16px; border-color: rgba(67,230,164,.28);
+      background: radial-gradient(circle at 80% 30%, rgba(67,230,164,.08), transparent 38%),
+        linear-gradient(130deg, rgba(67,230,164,.055), transparent 50%), var(--panel);
+    }
+    .result-layout { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .result-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--green); font-size: 12px; font-weight: 750; }
+    .result-label::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 14px rgba(67,230,164,.7); }
+    .big-result { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+    .big-result .number { font-variant-numeric: tabular-nums; font-size: clamp(43px, 9vw, 66px); font-weight: 800; line-height: 1; letter-spacing: -.055em; }
+    .big-result .unit { color: var(--text-3); font-size: 14px; font-weight: 700; }
+    .result-description { margin-top: 12px; color: var(--text-3); font-size: 12px; line-height: 1.55; }
+    .copy-button {
+      flex: none; height: 48px; min-width: 100px; padding: 0 17px; color: var(--text); font-size: 13px; font-weight: 700;
+      background: #1a2024; border: 1px solid rgba(67,230,164,.24); border-radius: 12px; cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, transform .08s ease;
+    }
+    .copy-button:hover:not(:disabled) { background: #20292a; border-color: rgba(67,230,164,.48); }
+    .copy-button:active:not(:disabled) { transform: scale(.97); }
+    .copy-button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .corrections, .formula { margin-top: 16px; }
+    .correction-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .correction {
+      position: relative; padding: 17px 15px; min-height: 126px; display: flex; flex-direction: column; align-items: stretch;
+      text-align: left; color: inherit; background: var(--panel-2); border: 1px solid var(--border); border-radius: 14px;
+      cursor: pointer; transition: transform .1s ease, border-color .16s ease, background .16s ease;
+    }
+    .correction:hover { border-color: var(--border-light); background: var(--panel-hover); transform: translateY(-2px); }
+    .correction:active { transform: translateY(0) scale(.985); }
+    .correction-multiplier { margin-bottom: 6px; color: var(--accent-2); font-size: 16px; font-weight: 800; }
+    .correction-name { min-height: 32px; color: var(--text-3); font-size: 11px; line-height: 1.4; }
+    .correction-value { margin-top: auto; padding-top: 12px; font-size: 23px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.025em; }
+    .correction-value span { margin-left: 3px; color: var(--text-3); font-size: 10px; font-weight: 700; }
+    .apply-hint { position: absolute; top: 12px; right: 12px; color: var(--text-3); font-size: 9px; font-weight: 650; opacity: 0; transition: opacity .16s ease; }
+    .correction:hover .apply-hint { opacity: 1; }
+
+    .formula-content { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+    .formula-code {
+      overflow-x: auto; padding: 12px 14px; color: #bbc5d8; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px; white-space: nowrap; background: #090c11; border: 1px solid var(--border); border-radius: 10px;
+    }
+    .formula-note { max-width: 330px; color: var(--text-3); font-size: 11px; line-height: 1.6; }
+    .footer { margin-top: 24px; color: var(--text-3); font-size: 11px; text-align: center; line-height: 1.7; }
+    .toast {
+      position: fixed; left: 50%; bottom: 25px; z-index: 99; transform: translate(-50%, 16px); padding: 10px 15px;
+      color: var(--text); font-size: 12px; font-weight: 700; background: #20252f; border: 1px solid var(--border-light);
+      border-radius: 99px; box-shadow: 0 12px 35px rgba(0,0,0,.35); opacity: 0; pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 760px) {
+      .page { padding-top: 28px; }
+      .two-column { grid-template-columns: 1fr; }
+      .correction-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tap-button { min-height: 115px; }
+    }
+    @media (max-width: 520px) {
+      .page { width: min(100% - 20px, 920px); padding-bottom: 45px; }
+      .card-body { padding: 17px; }
+      .audio-analyzer .card-body { padding: 16px; }
+      .audio-dropzone { min-height: 156px; flex-direction: column; gap: 14px; padding: 20px; text-align: center; }
+      .audio-status { align-items: flex-start; flex-direction: column; }
+      .input-grid { grid-template-columns: 1fr; }
+      .result-layout { align-items: flex-end; }
+      .copy-button { min-width: auto; height: 44px; padding: 0 14px; }
+      .formula-content { flex-direction: column; }
+      .formula-note { max-width: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+      .audio-dropzone.is-analyzing .audio-wave span { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div class="eyebrow">Tempo Utility</div>
+      <h1>BPM 错误修正工具</h1>
+      <p class="subtitle">修正 Half-Time、Double-Time 和 1.5 倍曲速识别问题，并将任意检测 BPM 自动映射到合理的目标速度区间。</p>
+    </header>
+
+    <section class="card audio-analyzer" aria-labelledby="audioAnalyzerTitle">
+      <div class="card-body">
+        <div class="section-title" id="audioAnalyzerTitle">音频自动分析 <span class="local-badge">仅在本机处理</span></div>
+        <input class="audio-file-input" id="audioFileInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus" />
+        <label class="audio-dropzone" id="audioDropzone" for="audioFileInput" tabindex="0">
+          <span class="audio-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
+          <span class="audio-copy">
+            <span class="audio-primary" id="audioPrimary">拖入音频，自动分析 BPM</span>
+            <span class="audio-secondary" id="audioSecondary">或点击选择文件 · 支持 MP3、WAV、M4A、FLAC、OGG 等浏览器可解码格式</span>
+          </span>
+        </label>
+        <div class="audio-status" aria-live="polite">
+          <span class="audio-status-text" id="audioStatus">建议使用节拍清晰、长度超过 10 秒的音频。</span>
+          <span class="audio-status-result" id="audioAnalysisResult"><strong id="audioBpm">—</strong><span>BPM · <b id="audioConfidence">—</b></span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid two-column">
+      <div class="card">
+        <div class="card-body">
+          <div class="section-title">BPM 输入 <span class="section-hint">实时计算</span></div>
+          <div class="input-grid">
+            <div class="field">
+              <label for="detectedBpm">测出的 BPM</label>
+              <div class="input-wrap">
+                <input id="detectedBpm" type="number" inputmode="decimal" min="1" max="999" step="0.1" placeholder="例如 105.0" autocomplete="off" />
+                <span class="suffix">BPM</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="lowerBound">目标区间下限 L</label>
+              <div class="input-wrap">
+                <input id="lowerBound" type="number" inputmode="decimal" min="1" max="500" step="0.1" value="100" autocomplete="off" />
+                <span class="suffix">L</span>
+              </div>
+            </div>
+          </div>
+          <div class="range-text">自动归一化目标区间：<strong id="rangeDisplay">100 – 200 BPM</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body tap-area">
+          <div class="section-title">
+            Tap Tempo
+            <div class="tap-title-actions">
+              <span class="section-hint" id="tapCount">0 taps</span>
+              <button class="reset-button" id="resetTapButton" type="button" disabled aria-label="重置 Tap Tempo">重置</button>
+            </div>
+          </div>
+          <button class="tap-button" id="tapButton" type="button" aria-label="点击或按空格键打拍测速">
+            <span class="tap-main">TAP</span>
+            <span class="tap-sub">点击或按 <span class="keycap">空格键</span> 打拍</span>
+            <span class="tap-bpm" id="tapBpm" aria-live="polite">等待打拍</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card result-card">
+      <div class="card-body">
+        <div class="result-layout">
+          <div>
+            <div class="result-label">映射后的真实 BPM</div>
+            <div class="big-result"><span class="number" id="normalizedBpm">—</span><span class="unit">BPM</span></div>
+            <div class="result-description" id="resultDescription">输入检测到的 BPM 后自动计算。</div>
+          </div>
+          <button type="button" class="copy-button" id="copyButton" disabled>复制结果</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card corrections">
+      <div class="card-body">
+        <div class="section-title">倍率快捷修正 <span class="section-hint">点击卡片可套用结果</span></div>
+        <div class="correction-grid">
+          <button class="correction" type="button" data-factor="0.5"><span class="apply-hint">套用</span><span class="correction-multiplier">÷ 2</span><span class="correction-name">检测结果偏快一倍</span><span class="correction-value"><b id="halfValue">—</b><span>BPM</span></span></button>
+          <button class="correction" type="button" data-factor="2"><span class="apply-hint">套用</span><span class="correction-multiplier">× 2</span><span class="correction-name">检测结果偏慢一倍</span><span class="correction-value"><b id="doubleValue">—</b><span>BPM</span></span></button>
+          <button class="correction" type="button" data-factor="0.6666666666666666"><span class="apply-hint">套用</span><span class="correction-multiplier">× 2/3</span><span class="correction-name">三连音 / 偏快 1.5 倍</span><span class="correction-value"><b id="twoThirdsValue">—</b><span>BPM</span></span></button>
+          <button class="correction" type="button" data-factor="1.5"><span class="apply-hint">套用</span><span class="correction-multiplier">× 3/2</span><span class="correction-name">偏慢 1.5 倍</span><span class="correction-value"><b id="threeHalvesValue">—</b><span>BPM</span></span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card formula">
+      <div class="card-body">
+        <div class="section-title">自动归一化</div>
+        <div class="formula-content">
+          <div class="formula-code">B_real = L × 2^( log₂(B_detected / L) mod 1 )</div>
+          <div class="formula-note">通过八度式 ×2 / ÷2 对数映射，将任意正数 BPM 折叠到 [L, 2L) 区间内。</div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">Tap Tempo 使用最近的打拍间隔进行平均，以减少单次点击误差。<br />停顿较长时间后再次点击会自动开始新一轮测速。</footer>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite">已复制</div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const $ = (id) => document.getElementById(id);
+      const detectedInput = $("detectedBpm");
+      const lowerInput = $("lowerBound");
+      const rangeDisplay = $("rangeDisplay");
+      const normalizedBpm = $("normalizedBpm");
+      const resultDescription = $("resultDescription");
+      const copyButton = $("copyButton");
+      const tapButton = $("tapButton");
+      const resetTapButton = $("resetTapButton");
+      const tapBpm = $("tapBpm");
+      const tapCount = $("tapCount");
+      const toast = $("toast");
+      const audioFileInput = $("audioFileInput");
+      const audioDropzone = $("audioDropzone");
+      const audioPrimary = $("audioPrimary");
+      const audioSecondary = $("audioSecondary");
+      const audioStatus = $("audioStatus");
+      const audioAnalysisResult = $("audioAnalysisResult");
+      const audioBpm = $("audioBpm");
+      const audioConfidence = $("audioConfidence");
+      const correctionButtons = document.querySelectorAll(".correction");
+      const values = {
+        half: $("halfValue"),
+        double: $("doubleValue"),
+        twoThirds: $("twoThirdsValue"),
+        threeHalves: $("threeHalvesValue")
+      };
+
+      let currentNormalizedValue = null;
+      let tapTimes = [];
+      let toastTimer = null;
+      let analysisRunId = 0;
+      const TAP_TIMEOUT = 2500;
+      const MAX_TAP_INTERVALS = 7;
+      const MAX_AUDIO_FILE_SIZE = 250 * 1024 * 1024;
+
+      const isPositiveNumber = (value) => Number.isFinite(value) && value > 0;
+      const formatBpm = (value) => Number.isFinite(value) ? value.toFixed(1) : "—";
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("visible");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("visible"), 1600);
+      }
+
+      function updateCalculations() {
+        const detected = Number.parseFloat(detectedInput.value);
+        const lower = Number.parseFloat(lowerInput.value);
+
+        rangeDisplay.textContent = isPositiveNumber(lower)
+          ? `${formatBpm(lower)} – ${formatBpm(lower * 2)} BPM`
+          : "—";
+
+        if (isPositiveNumber(detected)) {
+          values.half.textContent = formatBpm(detected / 2);
+          values.double.textContent = formatBpm(detected * 2);
+          values.twoThirds.textContent = formatBpm(detected * 2 / 3);
+          values.threeHalves.textContent = formatBpm(detected * 3 / 2);
+        } else {
+          Object.values(values).forEach((node) => { node.textContent = "—"; });
+        }
+
+        if (!isPositiveNumber(detected) || !isPositiveNumber(lower)) {
+          currentNormalizedValue = null;
+          normalizedBpm.textContent = "—";
+          resultDescription.textContent = "输入检测到的 BPM 后自动计算。";
+          copyButton.disabled = true;
+          return;
+        }
+
+        const logarithm = Math.log2(detected / lower);
+        const moduloOne = ((logarithm % 1) + 1) % 1;
+        currentNormalizedValue = lower * Math.pow(2, moduloOne);
+        normalizedBpm.textContent = formatBpm(currentNormalizedValue);
+        resultDescription.textContent = `${formatBpm(detected)} BPM 已映射到 ${formatBpm(lower)} – ${formatBpm(lower * 2)} BPM 区间。`;
+        copyButton.disabled = false;
+      }
+
+      function setAudioStatus(message, isError = false) {
+        audioStatus.textContent = message;
+        audioStatus.classList.toggle("audio-error", isError);
+      }
+
+      function resetAudioResult() {
+        audioAnalysisResult.classList.remove("visible");
+        audioBpm.textContent = "—";
+        audioConfidence.textContent = "—";
+      }
+
+      function formatDuration(seconds) {
+        const rounded = Math.max(0, Math.round(seconds));
+        const minutes = Math.floor(rounded / 60);
+        const remainder = String(rounded % 60).padStart(2, "0");
+        return `${minutes}:${remainder}`;
+      }
+
+      async function estimateBpm(audioBuffer) {
+        if (audioBuffer.duration < 5) throw new Error("音频过短，请使用至少 5 秒的片段");
+
+        const sampleRate = audioBuffer.sampleRate;
+        const startSeconds = audioBuffer.duration > 30 ? Math.min(5, audioBuffer.duration * 0.05) : 0;
+        const analysisSeconds = Math.min(180, audioBuffer.duration - startSeconds);
+        const startSample = Math.floor(startSeconds * sampleRate);
+        const endSample = Math.min(audioBuffer.length, Math.floor((startSeconds + analysisSeconds) * sampleRate));
+        const envelopeRate = 100;
+        const hopSize = Math.max(1, Math.round(sampleRate / envelopeRate));
+        const frameSize = hopSize * 2;
+        const frameCount = Math.floor((endSample - startSample - frameSize) / hopSize);
+        if (frameCount < envelopeRate * 4) throw new Error("可分析的有效音频过短");
+
+        const channelCount = Math.min(2, audioBuffer.numberOfChannels);
+        const channels = [];
+        for (let channel = 0; channel < channelCount; channel += 1) channels.push(audioBuffer.getChannelData(channel));
+
+        const energy = new Float32Array(frameCount);
+        let totalEnergy = 0;
+        for (let frame = 0; frame < frameCount; frame += 1) {
+          const offset = startSample + frame * hopSize;
+          let sum = 0;
+          let samples = 0;
+          for (let channel = 0; channel < channelCount; channel += 1) {
+            const data = channels[channel];
+            for (let sample = offset; sample < offset + frameSize; sample += 2) {
+              const value = data[sample] || 0;
+              sum += value * value;
+              samples += 1;
+            }
+          }
+          energy[frame] = Math.sqrt(sum / Math.max(1, samples));
+          totalEnergy += energy[frame];
+          if (frame > 0 && frame % 5000 === 0) await new Promise(requestAnimationFrame);
+        }
+        if (totalEnergy / frameCount < 0.0001) throw new Error("音频音量过低，无法识别稳定节拍");
+
+        const onset = new Float32Array(frameCount);
+        let movingAverage = energy[0];
+        let onsetMean = 0;
+        for (let index = 1; index < frameCount; index += 1) {
+          movingAverage = movingAverage * 0.94 + energy[index] * 0.06;
+          onset[index] = Math.max(0, energy[index] - movingAverage);
+          onsetMean += onset[index];
+        }
+        onsetMean /= frameCount;
+
+        let onsetVariance = 0;
+        for (let index = 0; index < frameCount; index += 1) {
+          const difference = onset[index] - onsetMean;
+          onsetVariance += difference * difference;
+        }
+        const onsetDeviation = Math.sqrt(onsetVariance / frameCount);
+        const onsetThreshold = onsetMean + onsetDeviation * 0.35;
+        let onsetStrength = 0;
+        for (let index = 0; index < frameCount; index += 1) {
+          onset[index] = Math.max(0, onset[index] - onsetThreshold);
+          onsetStrength += onset[index];
+        }
+        if (onsetStrength <= 0.0001) throw new Error("未检测到足够清晰的节拍瞬态");
+
+        const minimumBpm = 55;
+        const maximumBpm = 220;
+        const minimumLag = Math.floor(envelopeRate * 60 / maximumBpm);
+        const maximumLag = Math.ceil(envelopeRate * 60 / minimumBpm);
+        const correlations = new Float64Array(maximumLag + 1);
+        const scores = new Float64Array(maximumLag + 1);
+
+        for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
+          let product = 0;
+          let leftEnergy = 0;
+          let rightEnergy = 0;
+          for (let index = lag; index < frameCount; index += 1) {
+            const left = onset[index];
+            const right = onset[index - lag];
+            product += left * right;
+            leftEnergy += left * left;
+            rightEnergy += right * right;
+          }
+          correlations[lag] = product / Math.sqrt(leftEnergy * rightEnergy + 1e-12);
+        }
+
+        let bestLag = minimumLag;
+        let bestScore = -Infinity;
+        let scoreTotal = 0;
+        let scoreCount = 0;
+        for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
+          let score = correlations[lag];
+          if (lag * 2 <= maximumLag) score += correlations[lag * 2] * 0.45;
+          const halfLag = Math.round(lag / 2);
+          if (halfLag >= minimumLag) score += correlations[halfLag] * 0.12;
+          const candidateBpm = envelopeRate * 60 / lag;
+          if (candidateBpm < 65 || candidateBpm > 190) score *= 0.94;
+          scores[lag] = score;
+          scoreTotal += score;
+          scoreCount += 1;
+          if (score > bestScore) {
+            bestScore = score;
+            bestLag = lag;
+          }
+        }
+        if (!Number.isFinite(bestScore) || bestScore < 0.025) throw new Error("未检测到稳定 BPM，请尝试节拍更清晰的片段");
+
+        let refinedLag = bestLag;
+        if (bestLag > minimumLag && bestLag < maximumLag) {
+          const previous = scores[bestLag - 1];
+          const current = scores[bestLag];
+          const next = scores[bestLag + 1];
+          const denominator = previous - 2 * current + next;
+          if (Math.abs(denominator) > 1e-9) refinedLag += Math.max(-0.5, Math.min(0.5, 0.5 * (previous - next) / denominator));
+        }
+
+        const bpm = envelopeRate * 60 / refinedLag;
+        const averageScore = scoreTotal / Math.max(1, scoreCount);
+        const prominence = (bestScore - averageScore) / Math.max(bestScore, 1e-9);
+        const periodicity = correlations[bestLag];
+        const confidence = prominence > 0.55 && periodicity > 0.12
+          ? "高置信度"
+          : (prominence > 0.32 && periodicity > 0.055 ? "中等置信度" : "低置信度");
+
+        return { bpm, confidence, analysisSeconds };
+      }
+
+      async function analyzeAudioFile(file) {
+        const runId = ++analysisRunId;
+        resetAudioResult();
+        if (!file) return;
+        if (file.size > MAX_AUDIO_FILE_SIZE) {
+          setAudioStatus("文件超过 250 MB，请选择较短或压缩后的音频", true);
+          return;
+        }
+
+        audioDropzone.classList.add("is-analyzing");
+        audioPrimary.textContent = "正在读取音频…";
+        audioSecondary.textContent = file.name;
+        setAudioStatus("正在本地解码，不会上传文件。");
+
+        let audioContext = null;
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) throw new Error("当前浏览器不支持音频分析");
+          audioContext = new AudioContextClass();
+          const arrayBuffer = await file.arrayBuffer();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+          if (runId !== analysisRunId) return;
+
+          audioPrimary.textContent = "正在分析节拍…";
+          setAudioStatus(`已解码 ${formatDuration(audioBuffer.duration)} 音频，正在检测节拍。`);
+          await new Promise(requestAnimationFrame);
+          const result = await estimateBpm(audioBuffer);
+          if (runId !== analysisRunId) return;
+
+          const detectedBpm = Number(result.bpm.toFixed(1));
+          detectedInput.value = detectedBpm.toFixed(1);
+          updateCalculations();
+          audioBpm.textContent = detectedBpm.toFixed(1);
+          audioConfidence.textContent = result.confidence;
+          audioAnalysisResult.classList.add("visible");
+          audioPrimary.textContent = "分析完成";
+          audioSecondary.textContent = file.name;
+          setAudioStatus(`已分析 ${formatDuration(result.analysisSeconds)}，结果已填入 BPM 输入框。`);
+          showToast(`检测到 ${detectedBpm.toFixed(1)} BPM`);
+        } catch (error) {
+          console.error(error);
+          audioPrimary.textContent = "无法分析这个文件";
+          audioSecondary.textContent = "请换用节拍清晰的 MP3、WAV、M4A、FLAC 或 OGG 音频";
+          setAudioStatus(error && error.message ? error.message : "音频分析失败", true);
+        } finally {
+          if (audioContext) audioContext.close().catch(() => {});
+          if (runId === analysisRunId) audioDropzone.classList.remove("is-analyzing");
+          audioFileInput.value = "";
+        }
+      }
+
+      function resetTapTempo(showConfirmation = false) {
+        tapTimes = [];
+        tapCount.textContent = "0 taps";
+        tapBpm.textContent = "等待打拍";
+        resetTapButton.disabled = true;
+        tapButton.classList.remove("is-tapping");
+        if (showConfirmation) showToast("Tap Tempo 已重置");
+      }
+
+      function pulseTapButton() {
+        tapButton.classList.remove("is-tapping");
+        void tapButton.offsetWidth;
+        tapButton.classList.add("is-tapping");
+        window.setTimeout(() => tapButton.classList.remove("is-tapping"), 100);
+      }
+
+      function handleTap() {
+        const now = performance.now();
+        const lastTap = tapTimes[tapTimes.length - 1];
+
+        if (lastTap !== undefined && now - lastTap > TAP_TIMEOUT) tapTimes = [];
+        tapTimes.push(now);
+        if (tapTimes.length > MAX_TAP_INTERVALS + 1) tapTimes.shift();
+
+        tapCount.textContent = `${tapTimes.length} ${tapTimes.length === 1 ? "tap" : "taps"}`;
+        resetTapButton.disabled = false;
+        pulseTapButton();
+
+        if (tapTimes.length < 2) {
+          tapBpm.textContent = "继续打拍…";
+          return;
+        }
+
+        const intervals = [];
+        for (let index = 1; index < tapTimes.length; index += 1) intervals.push(tapTimes[index] - tapTimes[index - 1]);
+        const averageInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+        const bpm = 60000 / averageInterval;
+
+        if (!isPositiveNumber(bpm)) return;
+        const rounded = Number(bpm.toFixed(1));
+        tapBpm.textContent = `${formatBpm(rounded)} BPM`;
+        detectedInput.value = rounded.toFixed(1);
+        updateCalculations();
+      }
+
+      function isEditableTarget(target) {
+        if (!(target instanceof Element)) return false;
+        return Boolean(target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])"));
+      }
+
+      detectedInput.addEventListener("input", updateCalculations);
+      lowerInput.addEventListener("input", updateCalculations);
+      tapButton.addEventListener("click", handleTap);
+      resetTapButton.addEventListener("click", () => resetTapTempo(true));
+      audioFileInput.addEventListener("change", () => analyzeAudioFile(audioFileInput.files && audioFileInput.files[0]));
+
+      audioDropzone.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        audioFileInput.click();
+      });
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        audioDropzone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          if (!audioDropzone.classList.contains("is-analyzing")) audioDropzone.classList.add("is-dragging");
+        });
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        audioDropzone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          audioDropzone.classList.remove("is-dragging");
+        });
+      });
+
+      audioDropzone.addEventListener("drop", (event) => {
+        if (audioDropzone.classList.contains("is-analyzing")) return;
+        const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+        analyzeAudioFile(file);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.code !== "Space" || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        if (isEditableTarget(event.target)) return;
+        event.preventDefault();
+        handleTap();
+      });
+
+      correctionButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const detected = Number.parseFloat(detectedInput.value);
+          const factor = Number.parseFloat(button.dataset.factor);
+          if (!isPositiveNumber(detected) || !isPositiveNumber(factor)) {
+            showToast("请先输入有效 BPM");
+            detectedInput.focus();
+            return;
+          }
+          detectedInput.value = formatBpm(detected * factor);
+          updateCalculations();
+          showToast("已套用修正结果");
+        });
+      });
+
+      copyButton.addEventListener("click", async () => {
+        if (!isPositiveNumber(currentNormalizedValue)) return;
+        const text = formatBpm(currentNormalizedValue);
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (_) {
+          const area = document.createElement("textarea");
+          area.value = text;
+          area.style.position = "fixed";
+          area.style.opacity = "0";
+          document.body.appendChild(area);
+          area.select();
+          document.execCommand("copy");
+          area.remove();
+        }
+        showToast(`已复制 ${text} BPM`);
+      });
+
+      updateCalculations();
+      resetTapTempo();
+    })();
+  </script>
+</body>
+</html>
