@@ -12,4 +12,5 @@ __pycache__/
 Thumbs.db
 Desktop.ini
 
-music_tools/cashier/index2.html
+# Local-only cashier variant and its backups
+/cashier/index2*.html
