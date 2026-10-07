@@ -32,6 +32,9 @@ async function drop(page, selector, files) {
 test.beforeEach(async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error' && /React|Hook|Cannot update|unique.*key|hydration/i.test(message.text())) errors.push(message.text());
+  });
   page.__runtimeErrors = errors;
 });
 test.afterEach(async ({ page }) => { expect(page.__runtimeErrors).toEqual([]); });

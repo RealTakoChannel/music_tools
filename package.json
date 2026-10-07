@@ -2,24 +2,39 @@
   "name": "music-tools",
   "version": "2.0.0",
   "private": true,
-  "engines": { "node": ">=20.0.0" },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build && node scripts/build-offline.mjs",
     "preview": "vite preview --host 127.0.0.1",
+    "lint": "eslint src --max-warnings=0",
+    "format": "prettier --write src vite.config.mjs eslint.config.mjs scripts/build-offline.mjs",
+    "format:check": "prettier --check src vite.config.mjs eslint.config.mjs scripts/build-offline.mjs",
     "test": "node --test audiojoin/tests/wav-engine.test.cjs cashier/tests/audio-analysis.test.cjs shared/tests/i18n.test.cjs tests/domain.test.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:dev": "playwright test --config playwright.dev.config.cjs",
     "build:desktop": "npm run build && powershell -NoProfile -ExecutionPolicy Bypass -File audiojoin/desktop/build.ps1"
   },
   "dependencies": {
+    "motion": "^12.23.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "motion": "^12.23.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^4.7.0",
-    "vite": "^6.4.0",
     "esbuild": "^0.25.0",
-    "@playwright/test": "^1.56.0"
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^16.5.0",
+    "prettier": "^3.9.9",
+    "tailwindcss": "^4.3.3",
+    "vite": "^6.4.0"
   }
 }

@@ -8,7 +8,7 @@
 
 <kbd>中文</kbd> · <kbd>日本語</kbd> · <kbd>English</kbd>
 
-React · 本机处理 · 离线可用
+React · Tailwind CSS · 本机处理 · 离线可用
 
 [工具一览](#工具一览) · [开始使用](#开始使用) · [开发与维护](#开发与维护)
 
@@ -108,18 +108,25 @@ npm run build:desktop
 
 ## 开发与维护
 
-项目使用 React 19、Vite 6 和 Motion for React。公共导航、拖拽框、状态提示、文件列表和结果显示通过组件复用；语言由 React Context 管理，BPM 与计价算法独立于界面。
+项目使用 React 19、Vite 6、Tailwind CSS 4 和 Motion for React。公共导航、拖拽框、状态提示、文件列表和结果显示通过组件复用；语言由 React Context 管理，BPM 与计价算法独立于界面。
+
+界面使用 Tailwind 工具类，颜色、字体和断点在 `src/styles.css` 的 `@theme` 中统一配置，重复样式在 `src/ui/styles.js` 中复用。Tailwind 通过 Vite 插件本地编译，单文件离线版内联相同的编译结果。
+
+开发入口启用 React Strict Mode。分析队列使用纯 reducer 做不可变状态更新，文件和异步任务通过 refs 管理，渲染只读取 React 状态；事件、计时器与音频资源在副作用中清理。Hash 路由通过 `useSyncExternalStore` 订阅浏览器地址，语言 Context 值和翻译函数保持稳定。ESLint 检查 Hooks 规则、完整依赖、渲染纯度和 Fast Refresh，Prettier 统一代码格式。
 
 Motion 提供导航选中状态、工具切换、卡片悬停与按压、文件列表增删与排序、数值变化动画。使用 `MotionConfig reducedMotion="user"` 和 CSS 媒体查询尊重系统的“减少动态效果”偏好。应用使用 Hash 路由，工具首次使用时按需加载，访问后保持状态；静态托管无需服务器路由回退。
 
 ```text
 music_tools/
 ├── src/
-│   ├── main.jsx               # 单页面应用入口与工具状态保留
-│   ├── navigation.jsx         # Hash 导航与当前工具上下文
+│   ├── main.jsx               # Strict Mode 应用入口
+│   ├── App.jsx                # 单页工具导航与状态保留
+│   ├── navigation.js          # Hash 导航订阅与当前工具上下文
 │   ├── components.jsx         # 共用导航、拖拽和动画组件
-│   ├── i18n.jsx               # 三语 Context
-│   ├── styles.css             # 统一视觉与移动端布局
+│   ├── i18n.js                # 三语 Context 与稳定翻译 Hooks
+│   ├── providers/             # 语言状态 Provider
+│   ├── styles.css             # Tailwind 主题与基础样式
+│   ├── ui/                    # 共用 Tailwind 工具类
 │   ├── pages/                 # 首页、WAV 合并、BPM、计价
 │   ├── hooks/                 # 干音分析队列与状态
 │   └── lib/                   # BPM 检测、时间解析与计费
@@ -142,10 +149,13 @@ music_tools/
 
 ```sh
 npm test
+npm run lint
+npm run format:check
 npm run test:e2e
+npm run test:e2e:dev
 ```
 
-运行浏览器测试前先执行 `npm run build`。Windows 自动使用已安装的 Edge；其他环境可运行 `npx playwright install chromium`，或通过 `BROWSER_PATH` 指定浏览器。
+运行浏览器测试前先执行 `npm run build`。`test:e2e` 验证正式产物，`test:e2e:dev` 在 Strict Mode 开发服务中验证相同交互。Windows 自动使用已安装的 Edge；其他环境可运行 `npx playwright install chromium`，或通过 `BROWSER_PATH` 指定浏览器。
 
 测试覆盖干音静音检测、BPM 脉冲检测、计价边界、WAV 采样数据保留、参数校验、多语言与偏好、真实文件拖拽、分析期间追加、剪贴板、手机布局、减少动态效果及 `file://` 离线使用，也检查无刷新切换、工具状态保留、后台分析、事件隔离、旧地址跳转和前进后退。页面截图输出到 `tmp/react-qa/`。
 

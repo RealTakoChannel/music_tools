@@ -4,6 +4,26 @@ import { autoPriceMode, calculatePrice, normalizeBpm, parseTime } from '../src/l
 import { compareByFilename, outputFilename } from '../src/lib/audio.mjs';
 import { estimateBpm } from '../src/lib/tempo.mjs';
 import { readToolRoute, toolHref } from '../src/lib/routes.mjs';
+import { initialVocalGroup, vocalGroupReducer } from '../src/lib/vocal-group.mjs';
+
+test('vocal analysis updates immutable snapshots without corrupting manual input on failure', () => {
+  const entry = Object.freeze({ id: 'a', name: 'lead.wav' });
+  const added = vocalGroupReducer(initialVocalGroup, { type: 'add', entries: [entry] });
+  Object.freeze(added.entries); Object.freeze(added);
+  const manual = vocalGroupReducer(added, { type: 'manual' });
+  const failed = vocalGroupReducer(manual, { type: 'resolve', id: 'a', result: { error: 'unreadableFile' } });
+  const finished = vocalGroupReducer(failed, { type: 'finish' });
+  assert.equal(initialVocalGroup.entries.length, 0);
+  assert.equal(added.entries[0], entry);
+  assert.equal(entry.error, undefined);
+  assert.equal(finished.entries[0].error, 'unreadableFile');
+  assert.equal(finished.manual, true);
+  assert.equal(finished.autoFilled, false);
+  assert.equal(finished.busy, false);
+  const refilled = vocalGroupReducer(finished, { type: 'refill' });
+  assert.equal(refilled.manual, false);
+  assert.equal(refilled.autoFilled, true);
+});
 
 test('SPA routes support deep links, safe fallback and offline desktop startup', () => {
   for (const tool of ['home', 'audiojoin', 'bpmcalc', 'cashier']) {

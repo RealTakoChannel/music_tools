@@ -1,20 +1,27 @@
-export async function estimateBpm(audioBuffer, yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0))) {
-  if (audioBuffer.duration < 5) throw new Error("音频过短，请使用至少 5 秒的片段");
+export async function estimateBpm(
+  audioBuffer,
+  yieldToUI = () => new Promise((resolve) => setTimeout(resolve, 0)),
+) {
+  if (audioBuffer.duration < 5) throw new Error('音频过短，请使用至少 5 秒的片段');
 
   const sampleRate = audioBuffer.sampleRate;
   const startSeconds = audioBuffer.duration > 30 ? Math.min(5, audioBuffer.duration * 0.05) : 0;
   const analysisSeconds = Math.min(180, audioBuffer.duration - startSeconds);
   const startSample = Math.floor(startSeconds * sampleRate);
-  const endSample = Math.min(audioBuffer.length, Math.floor((startSeconds + analysisSeconds) * sampleRate));
+  const endSample = Math.min(
+    audioBuffer.length,
+    Math.floor((startSeconds + analysisSeconds) * sampleRate),
+  );
   const envelopeRate = 100;
   const hopSize = Math.max(1, Math.round(sampleRate / envelopeRate));
   const frameSize = hopSize * 2;
   const frameCount = Math.floor((endSample - startSample - frameSize) / hopSize);
-  if (frameCount < envelopeRate * 4) throw new Error("可分析的有效音频过短");
+  if (frameCount < envelopeRate * 4) throw new Error('可分析的有效音频过短');
 
   const channelCount = Math.min(2, audioBuffer.numberOfChannels);
   const channels = [];
-  for (let channel = 0; channel < channelCount; channel += 1) channels.push(audioBuffer.getChannelData(channel));
+  for (let channel = 0; channel < channelCount; channel += 1)
+    channels.push(audioBuffer.getChannelData(channel));
 
   const energy = new Float32Array(frameCount);
   let totalEnergy = 0;
@@ -34,7 +41,7 @@ export async function estimateBpm(audioBuffer, yieldToUI = () => new Promise(res
     totalEnergy += energy[frame];
     if (frame > 0 && frame % 5000 === 0) await yieldToUI();
   }
-  if (totalEnergy / frameCount < 0.0001) throw new Error("音频音量过低，无法识别稳定节拍");
+  if (totalEnergy / frameCount < 0.0001) throw new Error('音频音量过低，无法识别稳定节拍');
 
   const onset = new Float32Array(frameCount);
   let movingAverage = energy[0];
@@ -58,12 +65,12 @@ export async function estimateBpm(audioBuffer, yieldToUI = () => new Promise(res
     onset[index] = Math.max(0, onset[index] - onsetThreshold);
     onsetStrength += onset[index];
   }
-  if (onsetStrength <= 0.0001) throw new Error("未检测到足够清晰的节拍瞬态");
+  if (onsetStrength <= 0.0001) throw new Error('未检测到足够清晰的节拍瞬态');
 
   const minimumBpm = 55;
   const maximumBpm = 220;
-  const minimumLag = Math.floor(envelopeRate * 60 / maximumBpm);
-  const maximumLag = Math.ceil(envelopeRate * 60 / minimumBpm);
+  const minimumLag = Math.floor((envelopeRate * 60) / maximumBpm);
+  const maximumLag = Math.ceil((envelopeRate * 60) / minimumBpm);
   const correlations = new Float64Array(maximumLag + 1);
   const scores = new Float64Array(maximumLag + 1);
 
@@ -90,7 +97,7 @@ export async function estimateBpm(audioBuffer, yieldToUI = () => new Promise(res
     if (lag * 2 <= maximumLag) score += correlations[lag * 2] * 0.45;
     const halfLag = Math.round(lag / 2);
     if (halfLag >= minimumLag) score += correlations[halfLag] * 0.12;
-    const candidateBpm = envelopeRate * 60 / lag;
+    const candidateBpm = (envelopeRate * 60) / lag;
     if (candidateBpm < 65 || candidateBpm > 190) score *= 0.94;
     scores[lag] = score;
     scoreTotal += score;
@@ -100,7 +107,8 @@ export async function estimateBpm(audioBuffer, yieldToUI = () => new Promise(res
       bestLag = lag;
     }
   }
-  if (!Number.isFinite(bestScore) || bestScore < 0.025) throw new Error("未检测到稳定 BPM，请尝试节拍更清晰的片段");
+  if (!Number.isFinite(bestScore) || bestScore < 0.025)
+    throw new Error('未检测到稳定 BPM，请尝试节拍更清晰的片段');
 
   let refinedLag = bestLag;
   if (bestLag > minimumLag && bestLag < maximumLag) {
@@ -108,17 +116,20 @@ export async function estimateBpm(audioBuffer, yieldToUI = () => new Promise(res
     const current = scores[bestLag];
     const next = scores[bestLag + 1];
     const denominator = previous - 2 * current + next;
-    if (Math.abs(denominator) > 1e-9) refinedLag += Math.max(-0.5, Math.min(0.5, 0.5 * (previous - next) / denominator));
+    if (Math.abs(denominator) > 1e-9)
+      refinedLag += Math.max(-0.5, Math.min(0.5, (0.5 * (previous - next)) / denominator));
   }
 
-  const bpm = envelopeRate * 60 / refinedLag;
+  const bpm = (envelopeRate * 60) / refinedLag;
   const averageScore = scoreTotal / Math.max(1, scoreCount);
   const prominence = (bestScore - averageScore) / Math.max(bestScore, 1e-9);
   const periodicity = correlations[bestLag];
-  const confidence = prominence > 0.55 && periodicity > 0.12
-    ? "高置信度"
-    : (prominence > 0.32 && periodicity > 0.055 ? "中等置信度" : "低置信度");
+  const confidence =
+    prominence > 0.55 && periodicity > 0.12
+      ? '高置信度'
+      : prominence > 0.32 && periodicity > 0.055
+        ? '中等置信度'
+        : '低置信度';
 
   return { bpm, confidence, analysisSeconds };
 }
-
