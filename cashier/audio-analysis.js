@@ -86,5 +86,5 @@
 
   const api = { analyzeBuffer, activeSeconds, formatInput };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
-  else root.DryVocalAnalysis = api;
+  root.DryVocalAnalysis = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

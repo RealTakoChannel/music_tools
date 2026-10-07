@@ -2,6 +2,8 @@
 (function (root) {
   'use strict';
   const messages = {
+    '正在加载工具…': ['ツールを読み込み中…', 'Loading tools…'],
+    '无法复制，请手动选择结果。': ['コピーできません。結果を手動で選択してください。', 'Copy failed. Please select the result manually.'],
     '界面语言': ['表示言語', 'Interface language'],
     '站点导航': ['サイトナビゲーション', 'Site navigation'],
     '工具导航': ['ツールナビゲーション', 'Tool navigation'],
@@ -37,6 +39,7 @@
     '快速抹零': ['端数切り捨て', 'Quick rounding'],
     'Made for a smoother session': ['制作を、もっとスムーズに', 'Made for a smoother session'],
     'BPM 错误修正工具': ['BPM検出補正ツール', 'BPM Correction Tool'],
+    'BPM 错误修正工具 · Music Tools': ['BPM補正ツール · Music Tools', 'BPM Correction Tool · Music Tools'],
     '修正 Half-Time、Double-Time 和 1.5 倍曲速识别问题，并将任意检测 BPM 自动映射到合理的目标速度区间。': ['ハーフタイム、ダブルタイム、1.5倍のテンポ検出を補正し、検出BPMを適切な目標範囲に自動変換します。', 'Correct half-time, double-time and 1.5× tempo detection, and map any detected BPM into a suitable target range.'],
     '音频自动分析': ['音声の自動解析', 'Automatic audio analysis'],
     '仅在本机处理': ['端末内のみで処理', 'Processed on your device'],
@@ -217,5 +220,5 @@
   };
   const api = { messages, languageTags: { zh: 'zh-CN', ja: 'ja', en: 'en' } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else root.ToolTranslations = api;
+  root.ToolTranslations = api;
 })(globalThis);

@@ -4,7 +4,7 @@
 
 使用方法
 1. Windows 版：双击「音频合并.exe」。优先使用 Edge 的独立应用窗口，未安装时使用 Chrome 或默认浏览器。
-   网页版：解压「音频合并-离线网页版.zip」，双击 index.html。请保持 HTML、JS、CSS 文件在同一目录。
+   网页版：解压「音频合并-离线网页版.zip」，双击 index.html。React、JavaScript 和 CSS 均已包含在 HTML 中，无需联网。
 2. 将多个 WAV 拖入窗口，或者点击选择文件。软件自动按文件名升序排列，与选择或拖入顺序无关。
 3. 文件名中的数字按自然顺序排列，例如 1.wav、2.wav、10.wav。追加文件后整个队列也会重新排序。
    排序固定，不提供手动调序；× 可移除。完全同名的文件按导入先后排列。
@@ -38,7 +38,9 @@
 
 开发与验证
 · 核心：audiojoin/wav-engine.js
-· 界面：audiojoin/index.html、style.css、app.js
+· 界面：src/pages/AudioJoiner.jsx、src/components.jsx、src/styles.css
 · 测试：node --test audiojoin/tests/wav-engine.test.cjs
-· 打包：powershell -ExecutionPolicy Bypass -File audiojoin/desktop/build.ps1
-· 可以直接将 audiojoin 目录作为静态网页托管，无后端服务要求。
+· 开发：npm ci，然后 npm run dev
+· 打包：npm run build:desktop
+· 静态托管：npm run build 后部署 dist/。离线网页版位于 dist/offline/index.html，单个文件包含全部工具。
+· 单页面导航：通过顶部导航切换工具，保留本次会话的文件、输入和导出结果。关闭或刷新应用后清空。

@@ -2,102 +2,54 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 const catalog = require('../translations.js');
-const { translate } = require('../i18n.js');
+const cashier = require('../../cashier/translations.js');
+const { translate, readLanguage, saveLanguage } = require('../i18n.js');
 const project = path.resolve(__dirname, '../..');
+const slots = text => [...text.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort();
 
-test('every translation has Japanese and English text with matching placeholders', () => {
-  const slots = text => [...text.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort();
+test('all tool and cashier translations have matching keys and placeholders', () => {
   for (const [key, pair] of Object.entries(catalog.messages)) {
     assert.equal(pair.length, 2, key);
-    for (const text of pair) {
-      assert.ok(text.length, key);
-      assert.deepEqual(slots(text), slots(key), key);
+    for (const text of pair) { assert.ok(text.length, key); assert.deepEqual(slots(text), slots(key), key); }
+  }
+  for (const language of ['ja','en']) {
+    assert.deepEqual(Object.keys(cashier.messages[language]).sort(), Object.keys(cashier.messages.zh).sort());
+    for (const [key, value] of Object.entries(cashier.messages.zh)) assert.deepEqual(slots(cashier.messages[language][key]), slots(value), key);
+  }
+});
+test('React literal tool labels and audio errors are covered by translations', () => {
+  for (const file of ['src/components.jsx', 'src/pages/Home.jsx', 'src/pages/Tempo.jsx', 'src/pages/AudioJoiner.jsx']) {
+    const source = fs.readFileSync(path.join(project, file), 'utf8');
+    for (const match of source.matchAll(/\bt\(['"]([^'"\n]+)['"]/g)) {
+      const key = match[1].replace(/\\n/g, '\n');
+      if (/\p{Script=Han}/u.test(key)) assert.ok(Object.hasOwn(catalog.messages, key), `${file}: ${key}`);
     }
   }
+  for (const file of ['audiojoin/wav-engine.js', 'src/lib/tempo.mjs']) {
+    const source = fs.readFileSync(path.join(project, file), 'utf8');
+    for (const match of source.matchAll(/new Error\(['"]([^'"]+)['"]\)/g)) assert.ok(Object.hasOwn(catalog.messages, match[1]), `${file}: ${match[1]}`);
+  }
+});
+test('translations handle dynamic parameters and unknown keys', () => {
   assert.equal(translate('en', '检测到 {bpm} BPM', { bpm: 120 }), 'Detected 120 BPM');
   assert.equal(translate('invalid', '返回主界面'), '返回主界面');
   assert.equal(translate('en', '__proto__'), '__proto__');
+  assert.equal(translate('en', '正在读取 {index} / {count}：{name}', { index: 1, count: 2, name: '<中文文件>.wav' }), 'Reading 1 / 2: <中文文件>.wav');
 });
-
-test('all Chinese static text, labels and placeholders on the three pages are covered', () => {
-  for (const page of ['index.html', 'bpmcalc/index.html', 'audiojoin/index.html']) {
-    const html = fs.readFileSync(path.join(project, page), 'utf8');
-    const markup = html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/g, '');
-    const strings = [
-      ...[...markup.matchAll(/>([^<]+)</g)].map(m => m[1].trim()),
-      ...[...markup.matchAll(/(?:aria-label|placeholder|content)="([^"]*)"/g)].map(m => m[1])
-    ];
-    for (const key of strings.filter(text => /\p{Script=Han}/u.test(text) && !['中文', '日本語'].includes(text))) {
-      assert.ok(Object.hasOwn(catalog.messages, key), `${page}: ${key}`);
-    }
-    for (const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(script[1]);
-  }
+test('shared preference takes priority and legacy calculator preference is restored', () => {
+  const storage = values => ({ getItem: key => values[key] });
+  assert.equal(readLanguage(storage({ 'music-tools-language': 'ja', 'cashier-language': 'en' })), 'ja');
+  assert.equal(readLanguage(storage({ 'cashier-language': 'en' })), 'en');
+  assert.equal(readLanguage(storage({ 'music-tools-language': 'invalid' })), 'zh');
+  const saved = new Map();
+  saveLanguage('ja', { setItem: (key, value) => saved.set(key, value) });
+  assert.equal(saved.get('music-tools-language'), 'ja');
+  assert.equal(saved.get('cashier-language'), 'ja');
 });
-
-test('all literal audio validation errors have translations', () => {
-  for (const file of ['audiojoin/wav-engine.js', 'bpmcalc/index.html']) {
-    const source = fs.readFileSync(path.join(project, file), 'utf8');
-    for (const match of source.matchAll(/new Error\(['"]([^'"]+)['"]\)/g)) {
-      assert.ok(Object.hasOwn(catalog.messages, match[1]), `${file}: ${match[1]}`);
-    }
-  }
-});
-
-function setup({ saved = {}, blocked = false } = {}) {
-  const storage = new Map(Object.entries(saved));
-  function element(attributes = {}) {
-    return { attributes, isConnected: true, textContent: '', value: 'custom.wav', dataset: {}, listeners: {},
-      setAttribute(name, value) { this.attributes[name] = value; },
-      getAttribute(name) { return this.attributes[name] ?? null; },
-      addEventListener(name, fn) { this.listeners[name] = fn; },
-      closest() { return null; }
-    };
-  }
-  const parent = element(), staticNode = { nodeValue: '\n 返回主界面 ', parentElement: parent };
-  const ignoredNode = { nodeValue: '返回主界面', parentElement: { closest: () => ({}) } };
-  const placeholder = element({ placeholder: '默认使用第一个文件名' });
-  const buttons = ['zh', 'ja', 'en'].map(language => { const button = element(); button.dataset.language = language; return button; });
-  const nodes = [staticNode, ignoredNode];
-  let cursor = 0;
-  const document = { body: {}, title: '音频合并 · Music Tools', documentElement: {},
-    createTreeWalker() { return { nextNode: () => nodes[cursor++] || null }; },
-    querySelectorAll(selector) { return selector === '[data-language]' ? buttons : [placeholder]; }
-  };
-  const context = { ToolTranslations: catalog, document, NodeFilter: { SHOW_TEXT: 4 }, localStorage: {
-    getItem(key) { if (blocked) throw new Error('blocked'); return storage.get(key); },
-    setItem(key, value) { if (blocked) throw new Error('blocked'); storage.set(key, value); }
-  } };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../i18n.js'), 'utf8'), context);
-  return { i18n: context.ToolI18n.create(), staticNode, ignoredNode, placeholder, document, buttons, storage, element };
-}
-
-test('language changes preserve inputs and dynamic parameters, and repaint existing messages', () => {
-  const { i18n, staticNode, ignoredNode, placeholder, document, buttons, storage, element } = setup();
-  const status = element();
-  i18n.setText(status, '正在读取 {index} / {count}：{name}', { index: 1, count: 2, name: '<中文文件>.wav' });
-  buttons[2].listeners.click();
-  assert.equal(document.documentElement.lang, 'en');
-  assert.equal(document.title, 'Audio Joiner · Music Tools');
-  assert.equal(staticNode.nodeValue, '\n Back to home ');
-  assert.equal(ignoredNode.nodeValue, '返回主界面');
-  assert.equal(placeholder.attributes.placeholder, 'Defaults to the first filename');
-  assert.equal(placeholder.value, 'custom.wav');
-  assert.equal(status.textContent, 'Reading 1 / 2: <中文文件>.wav');
-  assert.equal(storage.get('music-tools-language'), 'en');
-  i18n.apply('ja');
-  assert.equal(status.textContent, '読み込み中 1 / 2：<中文文件>.wav');
-  i18n.setText(status, '分析完成');
-  i18n.apply('en');
-  assert.equal(status.textContent, 'Analysis complete');
-});
-
-test('shared preferences take priority, legacy calculator preferences migrate, and blocked storage works', () => {
-  assert.equal(setup({ saved: { 'music-tools-language': 'ja', 'cashier-language': 'en' } }).i18n.language, 'ja');
-  assert.equal(setup({ saved: { 'cashier-language': 'en' } }).i18n.language, 'en');
-  assert.equal(setup({ saved: { 'music-tools-language': 'invalid' } }).i18n.language, 'zh');
-  const { buttons, i18n } = setup({ blocked: true });
-  buttons[1].listeners.click();
-  assert.equal(i18n.language, 'ja');
+test('blocked local storage does not prevent language switching', () => {
+  const blocked = { getItem() { throw Error('blocked'); }, setItem() { throw Error('blocked'); } };
+  assert.equal(readLanguage(blocked), 'zh');
+  assert.doesNotThrow(() => saveLanguage('en', blocked));
+  assert.equal(translate('en', '返回主界面'), 'Back to home');
 });

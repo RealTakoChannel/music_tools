@@ -3,6 +3,11 @@
 /outputs/
 /.build/
 node_modules/
+dist/
+playwright-report/
+test-results/
+.npm-cache/
+.vite/
 __pycache__/
 *.py[cod]
 

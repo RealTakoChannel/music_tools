@@ -1,0 +1,92 @@
+@import 'tailwindcss';
+@source './';
+
+@theme {
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  --color-canvas: #090b10;
+  --color-surface: #11141c;
+  --color-line: #252b38;
+  --color-ink: #f4f7fb;
+  --color-muted: #9ca6b8;
+  --color-quiet: #8490a5;
+  --color-accent: #b4a0ff;
+  --color-mint: #43e6a4;
+  --color-sky: #78b7ff;
+  --color-danger: #ff9caa;
+  --breakpoint-sm: 45rem;
+  --breakpoint-md: 61.25rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    @apply bg-canvas font-sans text-ink;
+  }
+  html {
+    @apply min-w-[320px];
+  }
+  body {
+    @apply m-0 min-h-screen bg-[radial-gradient(ellipse_at_15%_0%,#9b7cff19,transparent_42%),radial-gradient(ellipse_at_95%_22%,#43e6a40b,transparent_35%)];
+  }
+  a {
+    @apply text-inherit no-underline;
+  }
+  button {
+    @apply cursor-pointer rounded-[10px] border border-[#303849] bg-[#1a1f2b] px-[13px] py-[9px] text-xs text-[#c7cfdf] transition-colors hover:enabled:border-[#716391] hover:enabled:bg-[#272c3c] disabled:cursor-not-allowed disabled:opacity-45;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  summary:focus-visible {
+    @apply outline-2 outline-offset-4 outline-accent;
+  }
+  input:focus-visible {
+    @apply outline-offset-2;
+  }
+  h2 {
+    @apply mb-[18px] text-[15px] font-[720];
+  }
+  label {
+    @apply mt-[22px] mb-[9px] block text-[11px] leading-[1.6] text-muted;
+  }
+  input:not([type='range']):not([type='checkbox']) {
+    @apply w-full min-w-0 rounded-[10px] border border-[#303849] bg-[#0b0e16] px-3.5 py-[13px] text-sm text-[#e4e8f6] placeholder:text-[#768095] aria-invalid:border-danger;
+  }
+  input[type='range'] {
+    @apply w-full cursor-pointer accent-mint;
+  }
+  input[type='checkbox'] {
+    @apply m-0 size-4 shrink-0 accent-accent;
+  }
+  audio {
+    @apply mt-5 h-[38px] w-full;
+  }
+  details {
+    @apply my-5 rounded-[14px] border border-line/40 px-5 py-4 text-[11px] leading-[1.85] text-quiet;
+  }
+  summary {
+    @apply cursor-pointer text-muted;
+  }
+  details p {
+    @apply mt-3 mb-0;
+  }
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

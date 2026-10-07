@@ -8,7 +8,7 @@
 
 <kbd>中文</kbd> · <kbd>日本語</kbd> · <kbd>English</kbd>
 
-本机处理 · 离线可用 · 无需构建
+React · Tailwind CSS · 本机处理 · 离线可用
 
 [工具一览](#工具一览) · [开始使用](#开始使用) · [开发与维护](#开发与维护)
 
@@ -68,17 +68,44 @@
 
 ### 直接使用
 
-打开 takoserver.top即可使用
+打开 [takoserver.top](https://takoserver.top/) 即可使用。
 
-### 构建方法
+### 本地开发与构建
 
-1. 下载或克隆整个仓库。
-2. 用浏览器打开根目录的 `index.html`。
-3. 在导航页选择工具，添加音频或输入数据即可开始。
+需要 Node.js 20 或更新版本。在项目根目录执行：
 
-也可以将整个项目部署到静态网站托管服务。请保留 `shared/` 和各工具子目录，页面需要读取同目录及共用的脚本、样式文件。
+```sh
+npm ci
+npm run dev
+```
 
-**音频始终在浏览器本机处理，不会上传到服务器。** 无需安装项目依赖或执行构建；保存完整项目后可以离线使用。
+打开终端显示的本地地址。源代码中的 `index.html` 是 Vite 入口，开发时通过本地服务访问。
+
+```sh
+npm run build
+npm run preview
+```
+
+构建生成两个版本：
+
+- `dist/`：静态托管版本，所有工具通过同一个 `index.html` 使用。地址为 `#/audiojoin`、`#/bpmcalc` 和 `#/cashier`；原有三个工具地址自动跳转到对应入口。自动复制 `CNAME`，将 `dist/` 内容部署到网站根目录即可。
+- `dist/offline/index.html`：单文件离线软件，React、所有工具、JavaScript 和样式均已内联。双击即可使用，单独复制这个 HTML 文件也能正常切换所有工具。
+
+**音频始终在浏览器本机处理，不会上传到服务器。** 离线产物无需安装依赖、加载 CDN 或联网。开发依赖只在安装与构建时需要。
+
+### GitHub Pages
+
+线上地址为 [takoserver.top](https://takoserver.top/)。GitHub Pages 使用 GitHub Actions 发布：`.github/workflows/pages.yml` 在 `main` 更新时安装依赖、检查代码、运行功能测试、构建 React/Tailwind，然后发布 `dist/`。也可以在 Actions 页面手动运行。
+
+仓库 Settings → Pages 的 Source 应为 **GitHub Actions**。现有自定义域名与 HTTPS 设置继续沿用；构建复制 `CNAME` 并生成 `.nojekyll`。资源路径根据 Pages 的路径前缀生成，同时兼容自定义域名根目录和仓库子目录。工具使用 Hash 路由，直接打开工具链接或刷新页面无需服务器路由配置。
+
+Windows 音频合并桌面包：
+
+```sh
+npm run build:desktop
+```
+
+输出位于 `outputs/audiojoin/`，包含桌面启动程序及离线网页版 ZIP。启动程序使用同一套 React 页面。
 
 ### 语言与交互
 
@@ -88,36 +115,61 @@
 - 切换语言会更新界面、状态、错误提示与无障碍标签，并保留当前输入、文件和处理结果。
 - 所有语言沿用相同的人民币计费规则，不进行货币换算。
 - 各工具顶部都有返回主界面的入口；页面支持手机布局，并适配系统的“减少动态效果”设置。
+- 通过顶部统一导航或首页卡片切换工具，页面不会重新加载。浏览器前进、后退和带工具地址的链接都可使用。
+- 切换工具保留本次会话的文件队列、手动输入、计价开关和导出结果；正在进行的分析继续完成。音频试听离开工具时暂停，快捷键和文件拖拽只作用于当前工具。关闭或刷新应用会清空本次会话数据。
 
 ## 开发与维护
 
-项目由 HTML、CSS 和原生 JavaScript 组成。
+项目使用 React 19、Vite 6、Tailwind CSS 4 和 Motion for React。公共导航、拖拽框、状态提示、文件列表和结果显示通过组件复用；语言由 React Context 管理，BPM 与计价算法独立于界面。
+
+界面使用 Tailwind 工具类，颜色、字体和断点在 `src/styles.css` 的 `@theme` 中统一配置，重复样式在 `src/ui/styles.js` 中复用。Tailwind 通过 Vite 插件本地编译，单文件离线版内联相同的编译结果。
+
+开发入口启用 React Strict Mode。分析队列使用纯 reducer 做不可变状态更新，文件和异步任务通过 refs 管理，渲染只读取 React 状态；事件、计时器与音频资源在副作用中清理。Hash 路由通过 `useSyncExternalStore` 订阅浏览器地址，语言 Context 值和翻译函数保持稳定。ESLint 检查 Hooks 规则、完整依赖、渲染纯度和 Fast Refresh，Prettier 统一代码格式。
+
+Motion 提供导航选中状态、工具切换、卡片悬停与按压、文件列表增删与排序、数值变化动画。使用 `MotionConfig reducedMotion="user"` 和 CSS 媒体查询尊重系统的“减少动态效果”偏好。应用使用 Hash 路由，工具首次使用时按需加载，访问后保持状态；静态托管无需服务器路由回退。
 
 ```text
 music_tools/
-├── index.html                 # 主导航页
-├── audiojoin/                 # WAV 音频合并与导出
-├── bpmcalc/                   # BPM 检测、修正与打拍测速
-├── cashier/                   # 混音计价与干音时长分析
-├── shared/                    # 共用多语言文案、切换逻辑与样式
+├── src/
+│   ├── main.jsx               # Strict Mode 应用入口
+│   ├── App.jsx                # 单页工具导航与状态保留
+│   ├── navigation.js          # Hash 导航订阅与当前工具上下文
+│   ├── components.jsx         # 共用导航、拖拽和动画组件
+│   ├── i18n.js                # 三语 Context 与稳定翻译 Hooks
+│   ├── providers/             # 语言状态 Provider
+│   ├── styles.css             # Tailwind 主题与基础样式
+│   ├── ui/                    # 共用 Tailwind 工具类
+│   ├── pages/                 # 首页、WAV 合并、BPM、计价
+│   ├── hooks/                 # 干音分析队列与状态
+│   └── lib/                   # BPM 检测、时间解析与计费
+├── audiojoin/                 # 旧地址跳转、WAV 引擎与桌面打包
+├── bpmcalc/                   # 旧地址跳转
+├── cashier/                   # 旧地址跳转、干音引擎与翻译
+├── shared/                    # 翻译字典和语言偏好
+├── scripts/build-offline.mjs   # 自包含离线页面生成
+├── tests/                     # 算法与真实浏览器回归测试
+├── vite.config.mjs            # 单页面静态构建
 ├── CNAME                      # 静态站点自定义域名配置
 └── LICENSE                    # Apache License 2.0
 ```
 
-主界面、BPM 和音频合并的文案维护在 `shared/translations.js`；混音价格计算器的文案维护在 `cashier/translations.js`。更新翻译时，请保持各语言的占位符一致。
+主界面、BPM 和音频合并的文案维护在 `shared/translations.js`；混音价格计算器的文案维护在 `cashier/translations.js`。更新翻译时，请保持各语言的占位符一致。已有 WAV 与干音引擎保留浏览器 / CommonJS 双入口，方便继续独立测试；界面状态和渲染全部由 React 管理。
 
 ### 功能验证
 
-安装 Node.js 后，在项目根目录运行以下测试，无需额外安装测试依赖：
+安装依赖后，在项目根目录执行：
 
 ```sh
-node cashier/tests/audio-analysis.test.cjs
-node cashier/tests/file-drop.test.cjs
-node audiojoin/tests/wav-engine.test.cjs
-node shared/tests/i18n.test.cjs
+npm test
+npm run lint
+npm run format:check
+npm run test:e2e
+npm run test:e2e:dev
 ```
 
-测试覆盖干音静音检测、多文件计费与拖拽、WAV 采样数据保留和参数校验、多语言文案及偏好存储。
+运行浏览器测试前先执行 `npm run build`。`test:e2e` 验证正式产物，`test:e2e:dev` 在 Strict Mode 开发服务中验证相同交互。Windows 自动使用已安装的 Edge；其他环境可运行 `npx playwright install chromium`，或通过 `BROWSER_PATH` 指定浏览器。
+
+测试覆盖干音静音检测、BPM 脉冲检测、计价边界、WAV 采样数据保留、参数校验、多语言与偏好、真实文件拖拽、分析期间追加、剪贴板、手机布局、减少动态效果及 `file://` 离线使用，也检查无刷新切换、工具状态保留、后台分析、事件隔离、旧地址跳转和前进后退。页面截图输出到 `tmp/react-qa/`。
 
 ## 许可证
 
