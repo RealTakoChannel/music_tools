@@ -105,5 +105,5 @@
   }
   const api = { messages, languageTags, translate };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
-  else root.CashierI18n = api;
+  root.CashierI18n = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

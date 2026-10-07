@@ -1,6 +1,6 @@
 # 混音价格计算器
 
-直接打开 `index.html`，或通过静态网站托管使用。请同时保留 `audio-analysis.js` 和 `translations.js`。
+在项目根目录运行 `npm run dev`，访问 `/#/cashier`。运行 `npm run build` 后可双击 `dist/offline/index.html`，通过统一导航切换到混音计价。原有 `/cashier/index.html` 地址自动跳转到单页面应用，也可以将 `dist/` 内容部署到静态网站。
 
 页面顶部可切换中文、日语和英语。界面、文件分析状态、错误提示、输入示例和无障碍标签随语言同步更新；浏览器会记住上次选择，无法保存偏好时仍可正常切换。切换语言不改变已添加文件、时长、手动开关或报价。所有语言使用相同的人民币计费规则，不进行货币换算。
 
@@ -22,11 +22,12 @@
 
 ## 验证
 
-使用 Node.js 内置测试，无需安装依赖：
+在项目根目录安装依赖后运行：
 
 ```sh
-node cashier/tests/audio-analysis.test.cjs
-node cashier/tests/file-drop.test.cjs
+npm test
+npm run build
+npm run test:e2e
 ```
 
 从项目根目录运行。测试覆盖静音间隔、低音量、孤立杂音、直流偏移、立体声、末帧长度、多文件累加、时间进位、左右拖拽独立计费、分析期间追加、拖拽高亮及框外落下保护。

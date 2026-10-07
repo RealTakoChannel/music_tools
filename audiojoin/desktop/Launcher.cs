@@ -19,7 +19,7 @@ internal static class Launcher
     {
         try
         {
-            string[] files = { "index.html", "style.css", "wav-engine.js", "app.js" };
+            string[] files = { "index.html" };
             Assembly assembly = Assembly.GetExecutingAssembly();
             byte[][] contents = new byte[files.Length][];
             using (MemoryStream all = new MemoryStream())
@@ -42,7 +42,7 @@ internal static class Launcher
                 Directory.CreateDirectory(directory);
                 for (int i = 0; i < files.Length; i++)
                     File.WriteAllBytes(Path.Combine(directory, files[i]), contents[i]);
-                string url = new Uri(Path.Combine(directory, "index.html")).AbsoluteUri + "?desktop=1";
+                string url = new Uri(Path.Combine(directory, "index.html")).AbsoluteUri + "?desktop=1#/audiojoin";
                 string[] browsers = {
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft", "Edge", "Application", "msedge.exe"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft", "Edge", "Application", "msedge.exe"),

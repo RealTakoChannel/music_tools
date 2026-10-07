@@ -161,5 +161,5 @@
   }
   const api = { parseWav, differences, makeHeader, mergeWavs };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else root.WavJoiner = api;
+  root.WavJoiner = api;
 })(globalThis);
