@@ -33,6 +33,7 @@ for (const tool of ['audiojoin', 'bpmcalc', 'cashier']) {
   await copyFile(`${tool}/index.html`, `dist/${tool}/index.html`);
 }
 await copyFile('CNAME', 'dist/CNAME');
+await writeFile('dist/.nojekyll', '');
 await writeFile(
   'dist/offline/使用说明.txt',
   '双击 index.html 打开 Music Tools。单个 HTML 包含所有工具，通过顶部导航切换；无需其他文件或联网。切换工具会保留本次会话的文件、输入和结果，关闭或刷新后清空。文件仅在本机处理。\n',

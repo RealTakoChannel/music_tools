@@ -87,6 +87,12 @@ npm run preview
 
 **音频始终在浏览器本机处理，不会上传到服务器。** 离线产物无需安装依赖、加载 CDN 或联网。开发依赖只在安装与构建时需要。
 
+### GitHub Pages
+
+线上地址为 [takoserver.top](https://takoserver.top/)。GitHub Pages 使用 GitHub Actions 发布：`.github/workflows/pages.yml` 在 `main` 更新时安装依赖、检查代码、运行功能测试、构建 React/Tailwind，然后发布 `dist/`。也可以在 Actions 页面手动运行。
+
+仓库 Settings → Pages 的 Source 应为 **GitHub Actions**。现有自定义域名与 HTTPS 设置继续沿用；构建复制 `CNAME` 并生成 `.nojekyll`。资源路径根据 Pages 的路径前缀生成，同时兼容自定义域名根目录和仓库子目录。工具使用 Hash 路由，直接打开工具链接或刷新页面无需服务器路由配置。
+
 Windows 音频合并桌面包：
 
 ```sh
