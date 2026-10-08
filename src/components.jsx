@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useI18n } from './i18n';
 import { toolHref } from './lib/routes.mjs';
+import GitHubStar from './GitHubStar';
 export function Panel({ children, className = '', ...props }) {
   const reduce = useReducedMotion();
   return (
@@ -198,7 +199,7 @@ export function Header({ home = false }) {
   const { t, language, setLanguage } = useI18n();
   return (
     <nav
-      className="topbar flex min-h-[38px] items-center justify-between gap-5 max-[380px]:gap-2"
+      className="topbar flex min-h-[38px] flex-wrap items-center justify-between gap-x-5 gap-y-3 max-[380px]:gap-x-2"
       aria-label={t(home ? '站点导航' : '工具导航')}
     >
       <a
@@ -221,7 +222,7 @@ export function Header({ home = false }) {
           </span>
         )}
       </a>
-      <div className="nav-actions flex items-center gap-[18px]">
+      <div className="nav-actions ml-auto flex flex-wrap items-center justify-end gap-2.5 md:gap-[18px]">
         <span className="local hidden items-center gap-[7px] text-[10px] text-quiet md:inline-flex [&_i]:size-[5px] [&_i]:rounded-full [&_i]:bg-mint">
           <i />
           {t('离线 · 本机处理')}
@@ -247,6 +248,7 @@ export function Header({ home = false }) {
             </button>
           ))}
         </div>
+        <GitHubStar />
       </div>
     </nav>
   );

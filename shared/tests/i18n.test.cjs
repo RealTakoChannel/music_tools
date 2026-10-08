@@ -19,7 +19,7 @@ test('all tool and cashier translations have matching keys and placeholders', ()
   }
 });
 test('React literal tool labels and audio errors are covered by translations', () => {
-  for (const file of ['src/components.jsx', 'src/pages/Home.jsx', 'src/pages/Tempo.jsx', 'src/pages/AudioJoiner.jsx']) {
+  for (const file of ['src/components.jsx', 'src/GitHubStar.jsx', 'src/pages/Home.jsx', 'src/pages/Tempo.jsx', 'src/pages/AudioJoiner.jsx']) {
     const source = fs.readFileSync(path.join(project, file), 'utf8');
     for (const match of source.matchAll(/\bt\(['"]([^'"\n]+)['"]/g)) {
       const key = match[1].replace(/\\n/g, '\n');

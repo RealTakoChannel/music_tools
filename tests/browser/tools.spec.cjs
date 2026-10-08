@@ -30,6 +30,8 @@ async function drop(page, selector, files) {
   }, files.map(({ name, bytes }) => ({ name, bytes: [...bytes] })));
 }
 test.beforeEach(async ({ page }) => {
+  // Keep existing audio/UI tests independent of GitHub availability and rate limits.
+  await page.route('https://api.github.com/repos/RealTakoChannel/music_tools', route => route.fulfill({ json: { stargazers_count: 42 } }));
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => {
@@ -255,6 +257,8 @@ test('one offline HTML switches between all tools without network requests', asy
   page.on('request', request => { if (/^https?:/.test(request.url())) network.push(request.url()); });
   await page.goto(pathToFileURL(path.resolve('dist/offline/index.html')).href);
   await expect(page.locator('.tool')).toHaveCount(3);
+  await expect(page.locator('.github-star')).toHaveAttribute('data-status', 'offline');
+  await expect(page.locator('[data-star-count]')).toHaveText('—');
   await page.locator('.tool').first().click();
   await expect(page.locator('#mergeBtn')).toBeDisabled();
   await page.locator('#fileInput').setInputFiles(upload('offline.wav', tone(1).bytes));
