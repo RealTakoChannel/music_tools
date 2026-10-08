@@ -173,4 +173,4 @@ npm run test:e2e:dev
 
 ## 许可证
 
-本项目采用 [Apache License 2.0](LICENSE)。
+本项目采用 [GNU Affero General Public License v3.0](LICENSE)。
