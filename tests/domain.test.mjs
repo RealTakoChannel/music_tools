@@ -5,6 +5,36 @@ import { compareByFilename, outputFilename } from '../src/lib/audio.mjs';
 import { estimateBpm } from '../src/lib/tempo.mjs';
 import { readToolRoute, toolHref } from '../src/lib/routes.mjs';
 import { initialVocalGroup, vocalGroupReducer } from '../src/lib/vocal-group.mjs';
+import { fetchGitHubStars, repositoryApi, starRefreshInterval } from '../src/lib/github-stars.mjs';
+
+test('GitHub stars accept real zero counts and send no credentials', async () => {
+  const controller = new AbortController();
+  const count = await fetchGitHubStars(controller.signal, async (url, options) => {
+    assert.equal(url, repositoryApi);
+    assert.equal(options.credentials, 'omit');
+    assert.equal(options.cache, 'no-store');
+    assert.equal(options.signal, controller.signal);
+    assert.equal(options.headers.Authorization, undefined);
+    return new Response(JSON.stringify({ stargazers_count: 0 }));
+  });
+  assert.equal(count, 0);
+  for (const value of [-1, '42', null, 1.5, undefined]) {
+    await assert.rejects(fetchGitHubStars(undefined, async () => new Response(JSON.stringify({ stargazers_count: value }))), /Invalid/);
+  }
+});
+
+test('GitHub rate limits respect reset time and retry-after instead of repeated polling', async () => {
+  const now = 1_000_000;
+  await assert.rejects(fetchGitHubStars(undefined, async () => new Response('', {
+    status: 403, headers: { 'retry-after': '120', 'x-ratelimit-reset': '4600' },
+  }), now), error => error.retryAt === 4_600_000);
+  await assert.rejects(fetchGitHubStars(undefined, async () => new Response('', {
+    status: 429, headers: { 'retry-after': '600' },
+  }), now), error => error.retryAt === now + 600_000);
+  await assert.rejects(fetchGitHubStars(undefined, async () => new Response('', {
+    status: 500, headers: { 'x-ratelimit-reset': 'invalid' },
+  }), now), error => error.retryAt === now + 5 * starRefreshInterval);
+});
 
 test('vocal analysis updates immutable snapshots without corrupting manual input on failure', () => {
   const entry = Object.freeze({ id: 'a', name: 'lead.wav' });

@@ -95,7 +95,7 @@ npm run preview
 
 ### GitHub Pages
 
-线上地址为 [takoserver.top](https://takoserver.top/)。GitHub Pages 使用 GitHub Actions 发布：`.github/workflows/pages.yml` 在 `main` 更新时安装依赖、检查代码、运行功能测试、构建 React/Tailwind，然后发布 `dist/`。也可以在 Actions 页面手动运行。
+线上地址为 [takoserver.top](https://takoserver.top/)。GitHub Pages 使用 GitHub Actions 发布：`.github/workflows/pages.yml` 在 PR 中验证代码、功能测试与构建，在 `main` 更新时发布 `dist/`。PR 不部署到线上，也可以在 Actions 页面手动运行发布。
 
 仓库 Settings → Pages 的 Source 应为 **GitHub Actions**。现有自定义域名与 HTTPS 设置继续沿用；构建复制 `CNAME` 并生成 `.nojekyll`。资源路径根据 Pages 的路径前缀生成，同时兼容自定义域名根目录和仓库子目录。工具使用 Hash 路由，直接打开工具链接或刷新页面无需服务器路由配置。
 
@@ -108,6 +108,8 @@ npm run build:desktop
 输出位于 `outputs/audiojoin/`，包含桌面启动程序及离线网页版 ZIP。启动程序使用同一套 React 页面。
 
 ### 语言与交互
+
+右上角提供 GitHub Star 标签，链接到本项目仓库。联网网页打开时通过 GitHub 公共 API 获取当前 Star 数量，页面可见时每分钟刷新；返回页面或恢复联网时也会检查更新。请求限流或失败时延迟重试并保留上次成功结果，首次失败显示 `—`，不会显示虚假的零值。单文件离线版不发起该请求。
 
 主导航页和三个工具均支持 **中文 / 日语 / 英语**，在页面顶部切换。
 

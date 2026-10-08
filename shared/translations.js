@@ -2,6 +2,13 @@
 (function (root) {
   'use strict';
   const messages = {
+    '在 GitHub 上 Star': ['GitHub で Star を付ける', 'Star on GitHub'],
+    '在 GitHub 上 Star，当前 {count} 个': ['GitHub で Star を付ける（現在 {count} 個）', 'Star on GitHub, currently {count} stars'],
+    '正在获取 GitHub Star 数量…': ['GitHub の Star 数を取得中…', 'Fetching GitHub star count…'],
+    'GitHub Star 数量，每分钟自动更新': ['GitHub の Star 数を毎分自動更新', 'GitHub star count, updated every minute'],
+    '暂时无法获取 Star 数量，仍可打开 GitHub 仓库': ['Star 数を取得できません。GitHub リポジトリは開けます', 'Star count is temporarily unavailable; you can still open the GitHub repository'],
+    '当前显示上次获取的 Star 数量': ['前回取得した Star 数を表示しています', 'Showing the last fetched star count'],
+    '离线模式：打开 GitHub 仓库需要联网': ['オフラインモード：GitHub リポジトリを開くには接続が必要です', 'Offline mode: opening the GitHub repository requires a connection'],
     '正在加载工具…': ['ツールを読み込み中…', 'Loading tools…'],
     '无法复制，请手动选择结果。': ['コピーできません。結果を手動で選択してください。', 'Copy failed. Please select the result manually.'],
     '界面语言': ['表示言語', 'Interface language'],
