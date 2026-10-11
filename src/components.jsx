@@ -258,7 +258,7 @@ export function ToolNavigation({ activeTool }) {
   const links = [
     ['home', '⌂', '全部工具'],
     ['audiojoin', '♫', '音频合并'],
-    ['bpmcalc', '120', 'BPM 修正工具'],
+    ['bpmcalc', '120', 'BPM 计算工具'],
     ['cashier', '¥', '混音价格计算器'],
   ];
   return (

@@ -35,7 +35,7 @@ export default function Tempo() {
     minimum = Number(lower),
     mapped = normalizeBpm(value, minimum);
   const valid = Number.isFinite(value) && value > 0;
-  usePageTitle('BPM 错误修正工具 · Music Tools');
+  usePageTitle('BPM 计算工具 · Music Tools');
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -168,7 +168,7 @@ export default function Tempo() {
     <>
       <Hero
         eyebrow={t('Tempo Utility')}
-        title={t('BPM 修正工具')}
+        title={t('BPM 计算工具')}
         description={t(
           '修正 Half-Time、Double-Time 与 1.5 倍曲速识别，并支持 Tap Tempo 实时测速。',
         )}

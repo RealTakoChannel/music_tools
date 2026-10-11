@@ -306,7 +306,7 @@ test('SPA navigation preserves files, merge output, BPM inputs and manual quotes
   await expect(page.locator('#detectedBpm')).toBeVisible();
   await expect(page.locator('#detectedBpm')).toHaveValue('75');
   await expect(page.locator('#lowerBound')).toHaveValue('90');
-  await expect(page).toHaveTitle('BPM Correction Tool · Music Tools');
+  await expect(page).toHaveTitle('BPM Calculator · Music Tools');
   await page.goBack();
   await expect(page.locator('#download')).toBeVisible();
   await expect(page.locator('#outputName')).toHaveValue('Session export');
@@ -359,7 +359,7 @@ test('analysis continues after switching tools and does not change the active ti
   await page.locator('#detectedBpm').focus();
   await expect(page.locator('#leftInput')).toHaveValue('0:03.00');
   await expect(page.locator('#detectedBpm')).toBeFocused();
-  await expect(page).toHaveTitle('BPM 错误修正工具 · Music Tools');
+  await expect(page).toHaveTitle('BPM 计算工具 · Music Tools');
   await page.locator('.app-navigation a[href="#/cashier"]').click();
   await expect(page.locator('#leftInput')).toHaveValue('0:03.00');
   await expect(page.locator('#leftFileList .file-name')).toHaveText(['background.wav']);

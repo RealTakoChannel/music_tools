@@ -19,7 +19,7 @@ const tools = [
     path: 'bpmcalc',
     glyph: '120',
     kicker: 'Tempo Utility',
-    title: 'BPM 修正工具',
+    title: 'BPM 计算工具',
     description: '修正 Half-Time、Double-Time 与 1.5 倍曲速识别，并支持 Tap Tempo 实时测速。',
     tags: ['BPM 映射', 'TAP TEMPO'],
     color: 'purple',
