@@ -1,135 +1,166 @@
+// AFPT six-band algorithm, ported from AFPT-BPM-Algorithm.md / KaleidoTools bpm.rs.
+// Keep the original frame/window/peak rules; do not add tempo or octave preferences.
+export const afptSampleRate = 48_000;
+const frameSize = 1024;
+const minimumBpm = 60;
+const candidateCount = 181;
+const tau = 2 * Math.PI;
+
+class Section {
+  constructor(cutoff, index, highpass) {
+    const fs = afptSampleRate;
+    const damping = -Math.cos((Math.PI * (2 * index + 3)) / 8);
+    const frequency = 2 * fs * Math.tan((Math.PI * cutoff) / fs);
+    const denominator = 4 * fs * fs + 4 * fs * damping * frequency + frequency * frequency;
+    // The highpass uses the same prewarped frequency (1 / inverse in Rust).
+    this.a = highpass
+      ? [4 * fs * fs, -8 * fs * fs, 4 * fs * fs]
+      : [frequency * frequency, 2 * frequency * frequency, frequency * frequency];
+    this.b = [
+      (2 * frequency * frequency - 8 * fs * fs) / -denominator,
+      (4 * fs * fs - 4 * fs * damping * frequency + frequency * frequency) / -denominator,
+    ];
+    this.gain = 1 / denominator;
+    this.x1 = this.x2 = this.y1 = this.y2 = 0;
+  }
+  sample(input) {
+    const x = input * this.gain;
+    const y =
+      this.a[2] * this.x2 +
+      this.a[1] * this.x1 +
+      this.a[0] * x +
+      this.b[0] * this.y1 +
+      this.b[1] * this.y2;
+    this.x2 = this.x1;
+    this.x1 = x;
+    this.y2 = this.y1;
+    this.y1 = y;
+    return y;
+  }
+}
+
+function filterBank() {
+  const low = (cutoff) => [1, 2].map((index) => new Section(cutoff, index, false));
+  const high = (cutoff) => [1, 2].map((index) => new Section(cutoff, index, true));
+  const band = (bottom, top) => [...low(top), ...high(bottom)];
+  return [low(200), band(200, 400), band(400, 800), band(800, 1600), band(1600, 3200), high(3200)];
+}
+
+// Exported math primitives allow independent numerical/reference tests.
+export function correlationMagnitude(values, theta, signal) {
+  const stepSin = Math.sin(theta),
+    stepCos = Math.cos(theta);
+  let sin = 0,
+    cos = 1,
+    a = 0,
+    b = 0;
+  for (let index = 0; index < values.length; index++) {
+    if (index % 4096 === 0) {
+      signal?.throwIfAborted();
+      sin = Math.sin(theta * index);
+      cos = Math.cos(theta * index);
+    }
+    a += values[index] * cos;
+    b += values[index] * sin;
+    const nextSin = sin * stepCos + cos * stepSin;
+    cos = cos * stepCos - sin * stepSin;
+    sin = nextSin;
+  }
+  return Math.sqrt(a * a + b * b);
+}
+
+export function selectAfptPeak(scores) {
+  let best = null;
+  // 60 and 240 are scored, but excluded from selection. Ties retain the lower BPM.
+  for (let index = 1; index < scores.length - 1; index++) {
+    if (
+      scores[index] - scores[index - 1] > 0 &&
+      scores[index + 1] - scores[index] <= 0 &&
+      (best === null || scores[index] > scores[best])
+    )
+      best = index;
+  }
+  return best === null ? null : best + minimumBpm;
+}
+
 export async function estimateBpm(
   audioBuffer,
   yieldToUI = () => new Promise((resolve) => setTimeout(resolve, 0)),
+  { signal, onProgress = () => {} } = {},
 ) {
-  if (audioBuffer.duration < 5) throw new Error('音频过短，请使用至少 5 秒的片段');
+  signal?.throwIfAborted();
+  if (audioBuffer.sampleRate !== afptSampleRate) throw new Error('BPM 分析需要 48 kHz 解码音频');
+  const count = Math.floor(audioBuffer.length / frameSize);
+  const result = (bpm) => ({
+    bpm,
+    analysisSeconds: (count * frameSize) / afptSampleRate,
+    algorithm: 'AFPT',
+  });
+  if (count < 2 || !audioBuffer.numberOfChannels) {
+    onProgress(1);
+    return result(null);
+  }
 
-  const sampleRate = audioBuffer.sampleRate;
-  const startSeconds = audioBuffer.duration > 30 ? Math.min(5, audioBuffer.duration * 0.05) : 0;
-  const analysisSeconds = Math.min(180, audioBuffer.duration - startSeconds);
-  const startSample = Math.floor(startSeconds * sampleRate);
-  const endSample = Math.min(
-    audioBuffer.length,
-    Math.floor((startSeconds + analysisSeconds) * sampleRate),
-  );
-  const envelopeRate = 100;
-  const hopSize = Math.max(1, Math.round(sampleRate / envelopeRate));
-  const frameSize = hopSize * 2;
-  const frameCount = Math.floor((endSample - startSample - frameSize) / hopSize);
-  if (frameCount < envelopeRate * 4) throw new Error('可分析的有效音频过短');
-
-  const channelCount = Math.min(2, audioBuffer.numberOfChannels);
-  const channels = [];
-  for (let channel = 0; channel < channelCount; channel += 1)
-    channels.push(audioBuffer.getChannelData(channel));
-
-  const energy = new Float32Array(frameCount);
-  let totalEnergy = 0;
-  for (let frame = 0; frame < frameCount; frame += 1) {
-    const offset = startSample + frame * hopSize;
-    let sum = 0;
-    let samples = 0;
-    for (let channel = 0; channel < channelCount; channel += 1) {
-      const data = channels[channel];
-      for (let sample = offset; sample < offset + frameSize; sample += 2) {
-        const value = data[sample] || 0;
-        sum += value * value;
-        samples += 1;
+  // Use the common peak of ALL channels, including the incomplete tail, but only
+  // channel zero enters the filters. Never downmix opposite-phase stereo.
+  let peak = 0;
+  for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+    const samples = audioBuffer.getChannelData(channel);
+    for (let offset = 0; offset < samples.length; offset += frameSize * 16) {
+      signal?.throwIfAborted();
+      const end = Math.min(offset + frameSize * 16, samples.length);
+      for (let index = offset; index < end; index++)
+        peak = Math.max(peak, Math.abs(samples[index]));
+      await yieldToUI();
+    }
+  }
+  signal?.throwIfAborted();
+  onProgress(0.05);
+  if (peak === 0) {
+    onProgress(1);
+    return result(null);
+  }
+  const gain = 10 ** (-6 / 10) / peak;
+  const samples = audioBuffer.getChannelData(0);
+  const bank = filterBank();
+  const onsets = bank.map(() => new Float64Array(count));
+  const previous = new Float64Array(6);
+  for (let frame = 0; frame < count; frame++) {
+    const sums = new Float64Array(6);
+    const end = (frame + 1) * frameSize;
+    for (let index = frame * frameSize; index < end; index++) {
+      const input = samples[index] * gain;
+      for (let band = 0; band < bank.length; band++) {
+        let value = input;
+        for (const section of bank[band]) value = section.sample(value);
+        sums[band] += Math.abs(value);
       }
     }
-    energy[frame] = Math.sqrt(sum / Math.max(1, samples));
-    totalEnergy += energy[frame];
-    if (frame > 0 && frame % 5000 === 0) await yieldToUI();
-  }
-  if (totalEnergy / frameCount < 0.0001) throw new Error('音频音量过低，无法识别稳定节拍');
-
-  const onset = new Float32Array(frameCount);
-  let movingAverage = energy[0];
-  let onsetMean = 0;
-  for (let index = 1; index < frameCount; index += 1) {
-    movingAverage = movingAverage * 0.94 + energy[index] * 0.06;
-    onset[index] = Math.max(0, energy[index] - movingAverage);
-    onsetMean += onset[index];
-  }
-  onsetMean /= frameCount;
-
-  let onsetVariance = 0;
-  for (let index = 0; index < frameCount; index += 1) {
-    const difference = onset[index] - onsetMean;
-    onsetVariance += difference * difference;
-  }
-  const onsetDeviation = Math.sqrt(onsetVariance / frameCount);
-  const onsetThreshold = onsetMean + onsetDeviation * 0.35;
-  let onsetStrength = 0;
-  for (let index = 0; index < frameCount; index += 1) {
-    onset[index] = Math.max(0, onset[index] - onsetThreshold);
-    onsetStrength += onset[index];
-  }
-  if (onsetStrength <= 0.0001) throw new Error('未检测到足够清晰的节拍瞬态');
-
-  const minimumBpm = 55;
-  const maximumBpm = 220;
-  const minimumLag = Math.floor((envelopeRate * 60) / maximumBpm);
-  const maximumLag = Math.ceil((envelopeRate * 60) / minimumBpm);
-  const correlations = new Float64Array(maximumLag + 1);
-  const scores = new Float64Array(maximumLag + 1);
-
-  for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
-    let product = 0;
-    let leftEnergy = 0;
-    let rightEnergy = 0;
-    for (let index = lag; index < frameCount; index += 1) {
-      const left = onset[index];
-      const right = onset[index - lag];
-      product += left * right;
-      leftEnergy += left * left;
-      rightEnergy += right * right;
+    for (let band = 0; band < bank.length; band++) {
+      const envelope = sums[band] / frameSize;
+      onsets[band][frame] = Math.max(envelope - previous[band], 0);
+      previous[band] = envelope;
     }
-    correlations[lag] = product / Math.sqrt(leftEnergy * rightEnergy + 1e-12);
-  }
-
-  let bestLag = minimumLag;
-  let bestScore = -Infinity;
-  let scoreTotal = 0;
-  let scoreCount = 0;
-  for (let lag = minimumLag; lag <= maximumLag; lag += 1) {
-    let score = correlations[lag];
-    if (lag * 2 <= maximumLag) score += correlations[lag * 2] * 0.45;
-    const halfLag = Math.round(lag / 2);
-    if (halfLag >= minimumLag) score += correlations[halfLag] * 0.12;
-    const candidateBpm = (envelopeRate * 60) / lag;
-    if (candidateBpm < 65 || candidateBpm > 190) score *= 0.94;
-    scores[lag] = score;
-    scoreTotal += score;
-    scoreCount += 1;
-    if (score > bestScore) {
-      bestScore = score;
-      bestLag = lag;
+    if ((frame + 1) % 16 === 0 || frame === count - 1) {
+      onProgress(0.05 + (0.65 * (frame + 1)) / count);
+      await yieldToUI();
+      signal?.throwIfAborted();
     }
   }
-  if (!Number.isFinite(bestScore) || bestScore < 0.025)
-    throw new Error('未检测到稳定 BPM，请尝试节拍更清晰的片段');
-
-  let refinedLag = bestLag;
-  if (bestLag > minimumLag && bestLag < maximumLag) {
-    const previous = scores[bestLag - 1];
-    const current = scores[bestLag];
-    const next = scores[bestLag + 1];
-    const denominator = previous - 2 * current + next;
-    if (Math.abs(denominator) > 1e-9)
-      refinedLag += Math.max(-0.5, Math.min(0.5, (0.5 * (previous - next)) / denominator));
+  // Hann denominator is M (not M - 1), shared by all six bands.
+  for (let frame = 0; frame < count; frame++) {
+    const weight = 0.5 - 0.5 * Math.cos((tau * frame) / count);
+    for (const onset of onsets) onset[frame] *= weight;
   }
-
-  const bpm = (envelopeRate * 60) / refinedLag;
-  const averageScore = scoreTotal / Math.max(1, scoreCount);
-  const prominence = (bestScore - averageScore) / Math.max(bestScore, 1e-9);
-  const periodicity = correlations[bestLag];
-  const confidence =
-    prominence > 0.55 && periodicity > 0.12
-      ? '高置信度'
-      : prominence > 0.32 && periodicity > 0.055
-        ? '中等置信度'
-        : '低置信度';
-
-  return { bpm, confidence, analysisSeconds };
+  const scores = new Float64Array(candidateCount);
+  for (let candidate = 0; candidate < candidateCount; candidate++) {
+    signal?.throwIfAborted();
+    const theta = (tau * (candidate + minimumBpm)) / 60 / (afptSampleRate / frameSize);
+    for (const onset of onsets)
+      scores[candidate] += correlationMagnitude(onset, theta, signal) / count;
+    onProgress(0.7 + (0.3 * (candidate + 1)) / candidateCount);
+    if (candidate % 4 === 3) await yieldToUI();
+  }
+  signal?.throwIfAborted();
+  return result(selectAfptPeak(scores));
 }

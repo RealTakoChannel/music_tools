@@ -112,18 +112,67 @@ test('BPM mapping, corrections, clipboard and input validation', async ({ page, 
   await expect(page.locator('#copyButton')).toBeDisabled();
 });
 
-test('BPM analysis runs locally and reports short audio errors', async ({ page }) => {
+test('AFPT BPM analysis resamples locally and shows unknown instead of a stale or zero tempo', async ({ page }) => {
+  await page.addInitScript(() => {
+    const Original = window.OfflineAudioContext;
+    window.OfflineAudioContext = class extends Original {
+      constructor(...args) { super(...args); window.__bpmDecodeRate = this.sampleRate; }
+    };
+  });
   await page.goto('/bpmcalc/index.html');
   const requests = [];
   page.on('request', request => { if (request.method() !== 'GET') requests.push(request.url()); });
   await page.locator('#audioFileInput').setInputFiles(upload('120-bpm.wav', tone(15, { bpm: 120 }).bytes));
   await expect(page.locator('.analysis-result')).toContainText('BPM');
-  expect(Math.abs(Number(await page.locator('#detectedBpm').inputValue()) - 120)).toBeLessThan(2);
-  await page.locator('#audioFileInput').setInputFiles(upload('short.wav', tone(2).bytes));
-  await expect(page.locator('.notice.error')).toContainText('至少 5 秒');
+  await expect(page.locator('#detectedBpm')).toHaveValue('120');
+  expect(await page.evaluate(() => window.__bpmDecodeRate)).toBe(48000);
+  await page.locator('#audioFileInput').setInputFiles(upload('short.wav', tone(.02).bytes));
+  await expect(page.locator('.analysis-result')).toContainText('BPM未知');
+  await expect(page.locator('#detectedBpm')).toHaveValue('');
+  await expect(page.locator('#normalizedBpm')).toHaveText('—');
   await page.getByRole('button', { name: 'English', exact: true }).click();
-  await expect(page.locator('.notice.error')).toContainText('at least 5 seconds');
+  await expect(page.locator('.analysis-result')).toContainText('BPM unknown');
+  await page.locator('#audioFileInput').setInputFiles(upload('silence.wav', tone(6, { silence: true }).bytes));
+  await expect(page.locator('.analysis-result')).toContainText('BPM unknown');
   expect(requests).toEqual([]);
+});
+
+test('AFPT analysis can be cancelled, restarted and completed after switching tools', async ({ page }) => {
+  await page.goto('/#/bpmcalc');
+  await page.locator('#audioFileInput').setInputFiles(upload('cancel.wav', tone(30, { bpm: 120 }).bytes));
+  await page.locator('#cancelAnalysis').click();
+  await expect(page.locator('#audioFileInput')).toBeEnabled();
+  await expect(page.locator('.notice')).toContainText(['已取消 BPM 分析。', '']);
+  await page.locator('#audioFileInput').setInputFiles(upload('background-tempo.wav', tone(15, { bpm: 120 }).bytes));
+  await page.locator('.app-navigation a[href="#/cashier"]').click();
+  await page.locator('#leftInput').fill('1:00');
+  await expect(page.locator('#detectedBpm')).toHaveValue('120');
+  await expect(page).toHaveTitle('混音价格计算器 · Music Tools');
+  await page.locator('.app-navigation a[href="#/bpmcalc"]').click();
+  await expect(page.locator('.analysis-result')).toContainText('120 BPM');
+});
+
+test('AFPT browser decoding preserves first-channel-only and opposite-phase stereo behavior', async ({ page }) => {
+  const mono = tone(15, { bpm: 120 });
+  const stereo = silentLeft => {
+    const header = Buffer.from(mono.bytes.subarray(0, 44));
+    const data = Buffer.alloc(mono.data.length * 2);
+    for (let index = 0; index < mono.data.length / 2; index++) {
+      const value = mono.data.readInt16LE(index * 2);
+      data.writeInt16LE(silentLeft ? 0 : value, index * 4);
+      data.writeInt16LE(-value, index * 4 + 2);
+    }
+    header.writeUInt32LE(data.length + 36, 4);
+    header.writeUInt16LE(2, 22); header.writeUInt32LE(16000 * 4, 28);
+    header.writeUInt16LE(4, 32); header.writeUInt32LE(data.length, 40);
+    return Buffer.concat([header, data]);
+  };
+  await page.goto('/#/bpmcalc');
+  await page.locator('#audioFileInput').setInputFiles(upload('opposite.wav', stereo(false)));
+  await expect(page.locator('#detectedBpm')).toHaveValue('120');
+  await page.locator('#audioFileInput').setInputFiles(upload('right-only.wav', stereo(true)));
+  await expect(page.locator('.analysis-result')).toContainText('BPM未知');
+  await expect(page.locator('#detectedBpm')).toHaveValue('');
 });
 
 test('Tap Tempo works with Space, preserves focus, and ignores editable fields', async ({ page }) => {
@@ -272,6 +321,9 @@ test('one offline HTML switches between all tools without network requests', asy
   await page.locator('.app-navigation a[href="#/bpmcalc"]').click();
   await page.locator('#detectedBpm').fill('75');
   await expect(page.locator('#normalizedBpm')).toHaveText('150.0');
+  await page.locator('#audioFileInput').setInputFiles(upload('offline-tempo.wav', tone(15, { bpm: 120 }).bytes));
+  await expect(page.locator('#detectedBpm')).toHaveValue('120');
+  await expect(page.locator('.analysis-result')).toContainText('AFPT');
   await page.locator('.app-navigation a[href="#/audiojoin"]').click();
   await expect(page.locator('#download')).toBeVisible();
   expect(network).toEqual([]);

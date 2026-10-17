@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { autoPriceMode, calculatePrice, normalizeBpm, parseTime } from '../src/lib/pricing.mjs';
 import { compareByFilename, outputFilename } from '../src/lib/audio.mjs';
-import { estimateBpm } from '../src/lib/tempo.mjs';
 import { readToolRoute, toolHref } from '../src/lib/routes.mjs';
 import { initialVocalGroup, vocalGroupReducer } from '../src/lib/vocal-group.mjs';
 import { fetchGitHubStars, repositoryApi, starRefreshInterval } from '../src/lib/github-stars.mjs';
@@ -96,18 +95,4 @@ test('natural sorting and safe output filenames', () => {
   assert.deepEqual(rows.sort(compareByFilename).map(row => row.file.name), ['clip 1.wav','clip 2.wav','clip 10.wav']);
   assert.equal(outputFilename('CON.wav'), '_CON.wav');
   assert.equal(outputFilename('quote/a:b.WAV'), 'quote_a_b.wav');
-});
-test('BPM estimation detects synthetic pulses and rejects silence/short clips', async () => {
-  const sampleRate = 16000, seconds = 15;
-  const samples = new Float32Array(sampleRate * seconds);
-  for (let frame = 0; frame < samples.length; frame++) {
-    const phase = frame % (sampleRate / 2);
-    if (phase < 640) samples[frame] = Math.sin(frame * 2 * Math.PI * 500 / sampleRate) * Math.exp(-phase / 180);
-  }
-  const buffer = { sampleRate, duration: seconds, length: samples.length, numberOfChannels: 1, getChannelData: () => samples };
-  const result = await estimateBpm(buffer);
-  assert.ok(Math.abs(result.bpm - 120) < 2, `Estimated ${result.bpm}`);
-  await assert.rejects(estimateBpm({ ...buffer, duration: 3 }), /至少 5 秒/);
-  samples.fill(0);
-  await assert.rejects(estimateBpm(buffer), /音量过低/);
 });

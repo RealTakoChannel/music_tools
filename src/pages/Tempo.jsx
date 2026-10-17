@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { AnimatedValue, Dropzone, Hero, Notice, Panel } from '../components';
 import { useI18n, usePageTitle } from '../i18n';
-import { estimateBpm } from '../lib/tempo.mjs';
+import { afptSampleRate, estimateBpm } from '../lib/tempo.mjs';
 import { normalizeBpm } from '../lib/pricing.mjs';
 import { timeLabel, yieldToUI } from '../lib/audio.mjs';
 import { useToolActive } from '../navigation';
@@ -30,6 +30,7 @@ export default function Tempo() {
   const tapTimes = useRef([]),
     run = useRef(0),
     toastTimer = useRef(null),
+    analysis = useRef(null),
     mounted = useRef(true);
   const value = Number(detected),
     minimum = Number(lower),
@@ -41,6 +42,7 @@ export default function Tempo() {
     return () => {
       mounted.current = false;
       run.current = -1;
+      analysis.current?.abort();
       clearTimeout(toastTimer.current);
     };
   }, []);
@@ -90,6 +92,9 @@ export default function Tempo() {
     const file = files[0];
     if (!file) return;
     const id = ++run.current;
+    analysis.current?.abort();
+    const controller = new AbortController();
+    analysis.current = controller;
     setResult(null);
     setFileName(file.name);
     if (file.size > 250 * 1024 * 1024) {
@@ -104,23 +109,35 @@ export default function Tempo() {
     setStatus({
       key: '正在读取音频…',
     });
-    let context;
     try {
-      const Audio = window.AudioContext || window.webkitAudioContext;
+      const Audio = window.OfflineAudioContext || window.webkitOfflineAudioContext;
       if (!Audio) throw new Error('当前浏览器不支持音频分析');
-      context = new Audio();
+      // decodeAudioData resamples to the context rate while preserving source channels.
+      const context = new Audio(1, 1, afptSampleRate);
       const buffer = await context.decodeAudioData(await file.arrayBuffer());
       if (id !== run.current) return;
       setStatus({
         key: '正在分析节拍…',
       });
       await yieldToUI();
-      const found = await estimateBpm(buffer);
+      let lastPercent = -1;
+      const found = await estimateBpm(buffer, yieldToUI, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          const percent = Math.floor(progress * 100);
+          if (id !== run.current || percent === lastPercent) return;
+          lastPercent = percent;
+          setStatus({ key: '正在分析整曲节拍… {progress}%', values: { progress: percent } });
+        },
+      });
       if (id !== run.current) return;
       setResult(found);
-      setDetected(found.bpm.toFixed(1));
+      setDetected(found.bpm === null ? '' : String(found.bpm));
       setStatus({
-        key: '已分析 {duration}，结果已填入 BPM 输入框。',
+        key:
+          found.bpm === null
+            ? 'BPM未知：未找到可用的节奏峰值。'
+            : '已分析 {duration}，结果已填入 BPM 输入框。',
         values: {
           duration: timeLabel(found.analysisSeconds),
         },
@@ -134,8 +151,10 @@ export default function Tempo() {
           error: true,
         });
     } finally {
-      if (context) await context.close().catch(() => {});
-      if (id === run.current && mounted.current) setBusy(false);
+      if (id === run.current && mounted.current) {
+        analysis.current = null;
+        setBusy(false);
+      }
     }
   }
   async function copy() {
@@ -188,10 +207,27 @@ export default function Tempo() {
           }
           error={status?.error}
         />
+        {busy && (
+          <button
+            id="cancelAnalysis"
+            onClick={() => {
+              run.current++;
+              analysis.current?.abort();
+              analysis.current = null;
+              setBusy(false);
+              setStatus({ key: '已取消 BPM 分析。' });
+            }}
+          >
+            {t('取消分析')}
+          </button>
+        )}
+        <p className={cx('hint', ui.hint)}>
+          {t('AFPT 六频带：以 48 kHz 分析整曲第一声道，输出整数 BPM；静音或无可用峰值时显示未知。')}
+        </p>
         {result && (
           <div className="analysis-result flex items-center gap-[15px] pt-2.5 text-xs text-muted [&_strong]:text-[22px] [&_strong]:text-accent">
-            <strong>{format(result.bpm)} BPM</strong>
-            <span>{t(result.confidence)}</span>
+            <strong>{result.bpm === null ? t('BPM未知') : `${result.bpm} BPM`}</strong>
+            <span>{t('AFPT 六频带 · 整曲分析')}</span>
           </div>
         )}
       </Panel>
