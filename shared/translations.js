@@ -6,7 +6,6 @@
     'BPM未知': ['BPM不明', 'BPM unknown'],
     'BPM未知：未找到可用的节奏峰值。': ['BPM不明：有効なテンポのピークが見つかりませんでした。', 'BPM unknown: no usable tempo peak was found.'],
     'AFPT 六频带 · 整曲分析': ['AFPT 6帯域 · 全曲解析', 'AFPT six bands · full-track analysis'],
-    'AFPT 六频带：以 48 kHz 分析整曲第一声道，输出整数 BPM；静音或无可用峰值时显示未知。': ['AFPTの6帯域方式で全曲の第1チャンネルを48 kHzで解析し、整数BPMを検出します。無音や有効なピークがない場合は不明と表示します。', 'AFPT analyzes the entire first channel at 48 kHz across six bands and returns an integer BPM. Silence or no usable peak is shown as unknown.'],
     '正在分析整曲节拍… {progress}%': ['全曲の拍を解析中… {progress}%', 'Analyzing full-track beats… {progress}%'],
     '取消分析': ['解析をキャンセル', 'Cancel analysis'],
     '已取消 BPM 分析。': ['BPM解析をキャンセルしました。', 'BPM analysis cancelled.'],

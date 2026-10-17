@@ -221,9 +221,6 @@ export default function Tempo() {
             {t('取消分析')}
           </button>
         )}
-        <p className={cx('hint', ui.hint)}>
-          {t('AFPT 六频带：以 48 kHz 分析整曲第一声道，输出整数 BPM；静音或无可用峰值时显示未知。')}
-        </p>
         {result && (
           <div className="analysis-result flex items-center gap-[15px] pt-2.5 text-xs text-muted [&_strong]:text-[22px] [&_strong]:text-accent">
             <strong>{result.bpm === null ? t('BPM未知') : `${result.bpm} BPM`}</strong>
