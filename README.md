@@ -2,181 +2,186 @@
 
 # 🎵 Music Tools
 
-**音乐制作里的小事，顺手处理。**
+**Small tasks in music production, made easier.**
 
-为日常制作与报价准备的轻量工具集，打开浏览器即可使用。
+Lightweight tools for everyday audio work and mixing quotes. Open your browser and get started.
 
-<kbd>中文</kbd> · <kbd>日本語</kbd> · <kbd>English</kbd>
+**English** · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
-React · Tailwind CSS · 本机处理 · 离线可用
+React · Tailwind CSS · On-device processing · Offline support
 
-[工具一览](#工具一览) · [开始使用](#开始使用) · [开发与维护](#开发与维护)
+[Open the app](https://takoserver.top/) · [Tools](#tools) · [Getting started](#getting-started) · [Development](#development)
 
 </div>
 
 ---
 
-## 工具一览
+## Tools
 
-| 工具 | 解决什么问题 | 主要功能 |
+| Tool | Purpose | Main features |
 | :--- | :--- | :--- |
-| ♫ **音频合并** | 将多段 WAV 整理成一个文件 | 按文件名自然排序、插入 1–2 秒静音、保留原始采样参数 |
-| ⏱ **BPM 计算工具** | 检测与修正歌曲速度 | 音频 BPM 检测、倍率修正、目标区间映射、Tap Tempo |
-| ¥ **混音价格计算器** | 根据有效人声时长计算报价 | 主人声与和声分别计费、多文件拖拽、自动填入时长、固定价格与抹零 |
+| ♫ **Audio Joiner** | Combine WAV clips into one file | Natural filename sorting, 1–2 second gaps, original sample data preserved |
+| ⏱ **BPM Calculator** | Detect and adjust tempo | Six-band BPM detection, multiplier corrections, range mapping, Tap Tempo |
+| ¥ **Mixing Price Calculator** | Quote by active vocal duration | Separate lead/harmony pricing, multiple files, fixed-price options, rounding |
 
-### ♫ 音频合并
+### ♫ Audio Joiner
 
-把多个 WAV 拖入页面，工具会按文件名自动排序，在片段之间加入静音，再导出为一个 WAV 文件。
+Drop in WAV files to sort them by filename, insert silence between clips, and export a single WAV.
 
-- **自然排序**：`片段 2.wav` 排在 `片段 10.wav` 前面。
-- **间隔可调**：支持 1–2 秒静音，提供 1 / 1.5 / 2 秒预设；开头与结尾不额外加静音。
-- **保留采样数据**：维持原采样率、位深与声道，不进行重采样或重新量化。
-- **参数校验**：采样率、位深、声道布局或编码不一致时，会提示并阻止合并。
-- **导出与试听**：可自定义输出文件名，合并后保存文件并尝试在浏览器中试听。
+- **Natural sorting:** `clip 2.wav` comes before `clip 10.wav`.
+- **Adjustable gaps:** choose 1–2 seconds, with 1 / 1.5 / 2 second presets. No extra silence is added at the beginning or end.
+- **Sample preservation:** keep the original sample rate, bit depth, channels, and encoding without resampling or requantization.
+- **Format validation:** incompatible sample rates, bit depths, channel layouts, or encodings block the merge and show an explanation.
+- **Export and preview:** edit the output filename, download the merged WAV, and preview it when supported by your browser.
 
-支持常见 PCM / Float WAV，超过 4 GB 的输出使用 RF64。合并时保留音频采样数据与必要的格式信息，原文件中的封面、标记点、BWF 描述、时间码等附加元数据不参与合并。试听能力取决于浏览器，RF64 播放需要兼容的软件。
+Common PCM and IEEE Float WAV formats are supported. Outputs exceeding the RIFF size limit use RF64. Audio samples and essential format information are retained; artwork, markers, BWF descriptions, timecode, and other metadata are not merged. RF64 playback requires compatible software.
 
-### ⏱ BPM 计算工具
+### ⏱ BPM Calculator
 
-拖入音频自动检测 BPM，也可以手动输入检测值，或通过点击、按空格键打拍测速。
+Drop in audio for automatic BPM detection, enter a detected tempo manually, or tap the button or Space key to measure tempo.
 
-- **倍率修正**：一键应用 `÷ 2`、`× 2`、`× 2/3`、`× 3/2`，处理 Half-Time、Double-Time 与 1.5 倍识别问题。
-- **区间映射**：设置下限 `L`，自动将 BPM 映射到 `[L, 2L)` 区间。
-- **Tap Tempo**：平均最近的打拍间隔，长时间停顿后自动开始新一轮测速。
-- **快速复制**：将修正后的结果复制到剪贴板。
+- **Multiplier corrections:** apply `÷ 2`, `× 2`, `× 2/3`, or `× 3/2` for half-time, double-time, and 1.5× detection differences.
+- **Range mapping:** set a lower bound `L` to map a positive BPM into `[L, 2L)`.
+- **Tap Tempo:** average recent tap intervals; a long pause starts a new sequence.
+- **Quick copy:** copy the mapped BPM to your clipboard.
+- **Progress and cancellation:** monitor a full-track analysis and stop it when needed.
 
-音频格式取决于浏览器解码支持，可使用 MP3、WAV、M4A、FLAC、OGG 等格式。单文件上限为 250 MB；浏览器将音频解码至 48 kHz，仅将第一声道送入六组四阶 Butterworth 低通、高通或带通滤波器。按 1024 个样本无重叠分帧，计算平均绝对振幅的正差分，再用分母为完整帧数的 Hann 窗，对 60–240 的整数 BPM 分别求六个频带的正余弦相关幅度之和。
+Input formats depend on browser decoding support, including MP3, WAV, M4A, FLAC, and OGG. The file limit is 250 MB. Audio is decoded to 48 kHz; only the first channel enters six fourth-order Butterworth low-pass, high-pass, or band-pass filters. The detector computes positive differences of mean absolute amplitudes in non-overlapping 1024-sample frames, applies a full-track Hann window, and sums the six bands' correlation magnitudes for integer candidates from 60 to 240 BPM.
 
-结果：同分取较小 BPM，排除 60 和 240，实际可返回 61–239 的整数 BPM；无峰值、全静音或不足两个完整帧时显示“BPM未知”，不写入零或保留上次的检测值。末尾不足 1024 个样本的部分不参与分析。不再只截取前 180 秒，不混合左右声道，也不自动偏好某个速度或纠正倍速；已有区间映射与倍率按钮属于独立的手动辅助功能。
+The strongest qualifying local peak wins; ties retain the lower BPM. Boundary candidates 60 and 240 are excluded, so the detector returns an integer from 61 to 239. Silence, no usable peak, or fewer than two complete frames produces **BPM unknown**, clears the previous detected value, and never substitutes zero. An incomplete final frame is excluded. The entire track is analyzed, with no 180-second cutoff or stereo downmixing. Range mapping and multiplier corrections are separate controls and do not alter the detector's candidate selection.
 
-浏览器版本使用本地 Web Audio 解码和重采样，不运行 FFmpeg，数值细节不保证与 FFmpeg 逐位一致。检测时施加的兼容增益目标峰值约为 −12 dBFS，只作用于内存中的分析数据，不修改或导出原音频。第一声道缺少节奏、变速或很短的片段可能无法给出有意义的结果，建议使用节拍清晰、超过 10 秒的音频，并结合试听和打拍核对。
+Decoding and resampling use Web Audio locally, without FFmpeg; numerical results are not guaranteed to match FFmpeg bit for bit. The analysis gain targets a common peak of approximately −12 dBFS and does not modify or export the source audio. A weak first channel, changing tempo, or a very short clip can limit the result. Use a clear beat and preferably more than 10 seconds of audio, then check against listening or Tap Tempo.
 
-### ¥ 混音价格计算器
+### ¥ Mixing Price Calculator
 
-主人声与和声分别上传，支持多文件选择、直接拖拽和分批追加。工具扣除静音后累加有效时长，自动填入时间框并计算报价。
+Add dry lead vocals and harmonies separately. Multiple files, drag and drop, and additional batches are supported. The tool excludes silence, adds the active durations, fills the time fields, and calculates a quote.
 
-| 计费项目 | 规则 |
+| Item | Pricing rule |
 | :--- | :--- |
-| 主音 | 每分钟 **30 元** |
-| 和声 | 每分钟 **20 元** |
-| 主音固定价 | 有人声时，时间计价满 **70 元**自动选 70 元；不足 **20 元**自动选 20 元，也可手动切换 |
-| 总价抹零 | 可向下抹至 **5 元档** |
+| Lead vocals | **CNY 30 per minute** |
+| Harmonies | **CNY 20 per minute** |
+| Lead fixed prices | For nonzero duration, select **CNY 70** when the time-based price reaches CNY 70, or **CNY 20** when it is below CNY 20; manual overrides are available |
+| Total rounding | Optionally round down to the nearest **CNY 5** |
 
-检测前将每个文件的峰值标准化至 **−6 dBFS**，再按默认 **−60 dBFS** 阈值估算有效声音段。阈值可调整，计费时间也可以手动修改，例如 `1:30` 或 `1:30.25`。标准化只作用于解码后的本地数据，不修改原文件。
+Each file is peak-normalized to **−6 dBFS** in decoded memory, using a shared gain across its channels. Active sound is measured against the default **−60 dBFS** threshold. Adjust the threshold or edit the billable duration, such as `1:30` or `1:30.25`. Source files are not modified.
 
-同一类别内各文件的有效时长分别相加，重叠演唱的不同轨道也分别计时；同一个立体声文件不会因两个声道而重复计费。此检测基于音量活动，伴奏、呼吸和底噪可能被计入，请使用纯人声干音并核对结果。
+Durations are summed per file within each category, including overlapping performances on different tracks. Two channels in one stereo file do not double the billable duration. This is sound-activity estimation, not a vocal classifier: accompaniment, breaths, and noise can count. Use isolated dry vocals and check the result.
 
-更详细的检测与计费说明见 [混音价格计算器文档](cashier/README.md)。
+See the [detailed pricing documentation (Chinese)](cashier/README.md) for detection and billing rules.
 
-## 开始使用
+## Getting started
 
-### 直接使用
+### Use the website
 
-打开 [takoserver.top](https://takoserver.top/) 即可使用。
+Open [takoserver.top](https://takoserver.top/). No installation is required.
 
-### 本地开发与构建
+### Local development and builds
 
-需要 Node.js 20 或更新版本。在项目根目录执行：
+Node.js and npm are required. See [package.json](package.json) for the declared version range and use a maintained release with current security patches. From the repository root:
 
 ```sh
 npm ci
 npm run dev
 ```
 
-打开终端显示的本地地址。源代码中的 `index.html` 是 Vite 入口，开发时通过本地服务访问。
+Open the local URL printed in your terminal. The source `index.html` is a Vite entry point and should be served through the development server.
 
 ```sh
 npm run build
 npm run preview
 ```
 
-构建生成两个版本：
+The build creates two versions:
 
-- `dist/`：静态托管版本，所有工具通过同一个 `index.html` 使用。地址为 `#/audiojoin`、`#/bpmcalc` 和 `#/cashier`；原有三个工具地址自动跳转到对应入口。自动复制 `CNAME`，将 `dist/` 内容部署到网站根目录即可。
-- `dist/offline/index.html`：单文件离线软件，React、所有工具、JavaScript 和样式均已内联。双击即可使用，单独复制这个 HTML 文件也能正常切换所有工具。
+- **`dist/`:** a static site with one app entry point. Tools use `#/audiojoin`, `#/bpmcalc`, and `#/cashier`; the original tool URLs redirect to the corresponding views. `CNAME` is copied automatically. Deploy the contents of `dist/`.
+- **`dist/offline/index.html`:** one self-contained HTML file with React, all tools, JavaScript, and styles embedded. Open it directly or copy it to another location; navigation works without extra files or a network connection.
 
-**音频始终在浏览器本机处理，不会上传到服务器。** 离线产物无需安装依赖、加载 CDN 或联网。开发依赖只在安装与构建时需要。
+**Audio stays in your browser and is never uploaded.** The offline build requires no CDN or network access. Development dependencies are needed only for installation, development, and builds.
 
 ### GitHub Pages
 
-线上地址为 [takoserver.top](https://takoserver.top/)。GitHub Pages 使用 GitHub Actions 发布：`.github/workflows/pages.yml` 在 PR 中验证代码、功能测试与构建，在 `main` 更新时发布 `dist/`。PR 不部署到线上，也可以在 Actions 页面手动运行发布。
+The public site is [takoserver.top](https://takoserver.top/). [The Pages workflow](.github/workflows/pages.yml) validates code, tests, and builds on pull requests, then publishes `dist/` when `main` changes. Pull requests do not deploy to production. Deployment can also be started manually from Actions.
 
-仓库 Settings → Pages 的 Source 应为 **GitHub Actions**。现有自定义域名与 HTTPS 设置继续沿用；构建复制 `CNAME` 并生成 `.nojekyll`。资源路径根据 Pages 的路径前缀生成，同时兼容自定义域名根目录和仓库子目录。工具使用 Hash 路由，直接打开工具链接或刷新页面无需服务器路由配置。
+In **Settings → Pages**, select **GitHub Actions** as the source. The build copies the custom-domain `CNAME` and creates `.nojekyll`. Asset paths follow the Pages path prefix, supporting custom-domain roots and repository subdirectories. Hash routing supports direct tool links and refreshes without server-side route configuration.
 
-Windows 音频合并桌面包：
+### Windows desktop package
 
 ```sh
 npm run build:desktop
 ```
 
-输出位于 `outputs/audiojoin/`，包含桌面启动程序及离线网页版 ZIP。启动程序使用同一套 React 页面。
+The Windows build creates a launcher and an offline web ZIP in `outputs/audiojoin/`. The launcher opens the same React app in a browser app window. See the [desktop instructions (Chinese)](audiojoin/使用说明.txt).
 
-### 语言与交互
+### Languages and interaction
 
-右上角提供 GitHub Star 标签，链接到本项目仓库。联网网页打开时通过 GitHub 公共 API 获取当前 Star 数量，页面可见时每分钟刷新；返回页面或恢复联网时也会检查更新。请求限流或失败时延迟重试并保留上次成功结果，首次失败显示 `—`，不会显示虚假的零值。单文件离线版不发起该请求。
+The app supports **English, Japanese, and Simplified Chinese**, selectable at the top of every view. This README's language links switch documentation; the app has its own language selector.
 
-主导航页和三个工具均支持 **中文 / 日语 / 英语**，在页面顶部切换。
+- Language preference is saved when browser storage is available.
+- Switching languages preserves files, inputs, manual pricing choices, and results, while updating messages and accessibility labels.
+- Prices remain in CNY in all languages; there is no currency conversion.
+- Mobile layouts and the system's reduced-motion preference are supported.
+- Navigation cards and the shared navigation bar switch tools without reloading. Browser history and direct tool links work as expected.
+- Files, inputs, quotes, and exports are retained for the current session. Analysis continues when you switch tools. Audio preview pauses when you leave the joiner; keyboard shortcuts and drops apply to the current tool. Closing or refreshing the app clears session data.
 
-- 浏览器支持本地存储时，会记住语言偏好，进入其他工具时继续沿用。
-- 切换语言会更新界面、状态、错误提示与无障碍标签，并保留当前输入、文件和处理结果。
-- 所有语言沿用相同的人民币计费规则，不进行货币换算。
-- 各工具顶部都有返回主界面的入口；页面支持手机布局，并适配系统的“减少动态效果”设置。
-- 通过顶部统一导航或首页卡片切换工具，页面不会重新加载。浏览器前进、后退和带工具地址的链接都可使用。
-- 切换工具保留本次会话的文件队列、手动输入、计价开关和导出结果；正在进行的分析继续完成。音频试听离开工具时暂停，快捷键和文件拖拽只作用于当前工具。关闭或刷新应用会清空本次会话数据。
+The GitHub Star badge links to this repository and fetches its current star count through the public GitHub API. It refreshes every minute while the page is visible, with throttled checks on focus or reconnection. Failed or rate-limited requests back off and retain the last result; an unavailable initial count displays `—`. The offline HTML does not make this request.
 
-## 开发与维护
+## Development
 
-项目使用 React 19、Vite 6、Tailwind CSS 4 和 Motion for React。公共导航、拖拽框、状态提示、文件列表和结果显示通过组件复用；语言由 React Context 管理，BPM 与计价算法独立于界面。
+The app uses **React 19, Vite 6, Tailwind CSS 4, and Motion for React**. Navigation, drop zones, status messages, file lists, and animated values are shared components. Language state uses React Context; tempo detection, time parsing, pricing, and WAV processing are separated from rendering.
 
-界面使用 Tailwind 工具类，颜色、字体和断点在 `src/styles.css` 的 `@theme` 中统一配置，重复样式在 `src/ui/styles.js` 中复用。Tailwind 通过 Vite 插件本地编译，单文件离线版内联相同的编译结果。
+Tailwind theme tokens live in `src/styles.css`; reusable utility strings are in `src/ui/styles.js`. Styles are compiled locally by the Vite plugin, and the same compiled CSS is embedded in the offline build.
 
-开发入口启用 React Strict Mode。分析队列使用纯 reducer 做不可变状态更新，文件和异步任务通过 refs 管理，渲染只读取 React 状态；事件、计时器与音频资源在副作用中清理。Hash 路由通过 `useSyncExternalStore` 订阅浏览器地址，语言 Context 值和翻译函数保持稳定。ESLint 检查 Hooks 规则、完整依赖、渲染纯度和 Fast Refresh，Prettier 统一代码格式。
+React Strict Mode is enabled in development. Analysis queues use immutable reducer updates; refs coordinate asynchronous jobs and file handles. Effects clean up subscriptions, timers, and processing tasks. `useSyncExternalStore` subscribes to hash navigation, while language context values and translation callbacks are stable. ESLint checks Hooks rules, dependencies, rendering purity, and Fast Refresh; Prettier handles formatting.
 
-Motion 提供导航选中状态、工具切换、卡片悬停与按压、文件列表增删与排序、数值变化动画。使用 `MotionConfig reducedMotion="user"` 和 CSS 媒体查询尊重系统的“减少动态效果”偏好。应用使用 Hash 路由，工具首次使用时按需加载，访问后保持状态；静态托管无需服务器路由回退。
+Motion animates navigation, view transitions, cards, file lists, and values. `MotionConfig reducedMotion="user"` and CSS media queries honor reduced-motion settings. Tools load lazily and retain state after their first visit. Static hosting requires no server-side routing fallback.
 
 ```text
 music_tools/
 ├── src/
-│   ├── main.jsx               # Strict Mode 应用入口
-│   ├── App.jsx                # 单页工具导航与状态保留
-│   ├── navigation.js          # Hash 导航订阅与当前工具上下文
-│   ├── components.jsx         # 共用导航、拖拽和动画组件
-│   ├── i18n.js                # 三语 Context 与稳定翻译 Hooks
-│   ├── providers/             # 语言状态 Provider
-│   ├── styles.css             # Tailwind 主题与基础样式
-│   ├── ui/                    # 共用 Tailwind 工具类
-│   ├── pages/                 # 首页、WAV 合并、BPM、计价
-│   ├── hooks/                 # 干音分析队列与状态
-│   └── lib/                   # BPM 检测、时间解析与计费
-├── audiojoin/                 # 旧地址跳转、WAV 引擎与桌面打包
-├── bpmcalc/                   # 旧地址跳转
-├── cashier/                   # 旧地址跳转、干音引擎与翻译
-├── shared/                    # 翻译字典和语言偏好
-├── scripts/build-offline.mjs   # 自包含离线页面生成
-├── tests/                     # 算法与真实浏览器回归测试
-├── vite.config.mjs            # 单页面静态构建
-├── CNAME                      # 静态站点自定义域名配置
-└── LICENSE                    # Apache License 2.0
+│   ├── main.jsx               # Strict Mode entry point
+│   ├── App.jsx                # Tool navigation and session state
+│   ├── navigation.js          # Hash subscriptions and active-tool context
+│   ├── components.jsx         # Shared navigation, drop zones, and animation
+│   ├── i18n.js                # Language context and translation Hooks
+│   ├── providers/             # Language state provider
+│   ├── styles.css             # Tailwind theme and base styles
+│   ├── ui/                    # Shared Tailwind utilities
+│   ├── pages/                 # Home, WAV joiner, BPM, and pricing
+│   ├── hooks/                 # Audio-analysis and Star-refresh state
+│   └── lib/                   # Tempo detection, time parsing, and pricing
+├── audiojoin/                 # Legacy redirect, WAV engine, desktop packaging
+├── bpmcalc/                   # Legacy redirect
+├── cashier/                   # Legacy redirect, vocal engine, translations
+├── shared/                    # Translation catalog and language preference
+├── scripts/build-offline.mjs   # Self-contained offline build
+├── tests/                     # Algorithm and browser regression tests
+├── README.md                  # English documentation (default)
+├── README.ja.md               # Japanese documentation
+├── README.zh-CN.md            # Simplified Chinese documentation
+├── vite.config.mjs            # Static app build configuration
+├── CNAME                      # Custom domain
+└── LICENSE                    # GNU AGPLv3
 ```
 
-主界面、BPM 和音频合并的文案维护在 `shared/translations.js`；混音价格计算器的文案维护在 `cashier/translations.js`。更新翻译时，请保持各语言的占位符一致。已有 WAV 与干音引擎保留浏览器 / CommonJS 双入口，方便继续独立测试；界面状态和渲染全部由 React 管理。
+Maintain home, BPM, and joiner strings in `shared/translations.js`; pricing strings are in `cashier/translations.js`. Keep placeholders consistent across languages. The WAV and vocal-analysis engines retain browser/CommonJS compatibility for independent tests; React manages UI state and rendering.
 
-### 功能验证
+### Verification
 
-安装依赖后，在项目根目录执行：
+After installing dependencies, run from the repository root:
 
 ```sh
 npm test
 npm run lint
 npm run format:check
+npm run build
 npm run test:e2e
 npm run test:e2e:dev
 ```
 
-运行浏览器测试前先执行 `npm run build`。`test:e2e` 验证正式产物，`test:e2e:dev` 在 Strict Mode 开发服务中验证相同交互。Windows 自动使用已安装的 Edge；其他环境可运行 `npx playwright install chromium`，或通过 `BROWSER_PATH` 指定浏览器。
+Browser tests require a build first. `test:e2e` checks production artifacts; `test:e2e:dev` exercises the same flows in Strict Mode. On Windows, tests use an installed Edge automatically. Elsewhere, run `npx playwright install chromium` or set `BROWSER_PATH` to a compatible browser executable.
 
-测试覆盖干音静音检测、BPM 脉冲检测、计价边界、WAV 采样数据保留、参数校验、多语言与偏好、真实文件拖拽、分析期间追加、剪贴板、手机布局、减少动态效果及 `file://` 离线使用，也检查无刷新切换、工具状态保留、后台分析、事件隔离、旧地址跳转和前进后退。页面截图输出到 `tmp/react-qa/`。
+Coverage includes vocal activity, integer BPM detection and boundary rules, pricing, byte-preserving WAV joins, format validation, translations, drag and drop, queued analysis, cancellation, clipboard operations, mobile layouts, reduced motion, offline `file://` use, state retention, background processing, event isolation, redirects, and browser history. Screenshots are written to `tmp/react-qa/`.
 
-## 许可证
+## License
 
-本项目采用 [GNU Affero General Public License v3.0](LICENSE)。
+Licensed under the [GNU Affero General Public License v3.0](LICENSE).
